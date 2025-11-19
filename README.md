@@ -1,13 +1,12 @@
 # Projeto Integrador I — Certificação e Comércio Justo
-**Equipe Alpha**
 
 Este repositório contém o desenvolvimento do Projeto Integrador I, cujo objetivo é criar uma plataforma que conecta produtores a mercados utilizando um selo de qualidade confiável (certificação digital), ampliando vendas seguras e agregando valor aos produtos.
 
-## 🧑‍💼 Cliente
+## Cliente
 **Amazônia Marketing & Consultoria Ltda.**
 
 
-## ❗ O Problema
+## O Problema
 O processo atual de **cadastramento e certificação** não conversa com o mercado.  
 Isso gera:
 - Desconfiança do consumidor
@@ -16,7 +15,7 @@ Isso gera:
 - Dificuldade de acesso a mercados maiores
 
 
-## 💡 A Solução (MVP)
+## A Solução (MVP)
 Desenvolver um **sistema/plataforma** que permita:
 
 - Cadastro de produtos e empresas  
@@ -27,16 +26,16 @@ Desenvolver um **sistema/plataforma** que permita:
 O objetivo é entregar um MVP funcional que demonstre os fluxos essenciais de certificação e comercialização.
 
 
-## 🎯 Objetivo Geral
+## Objetivo Geral
 **Ampliar as vendas de forma confiável e segura** através de um processo padronizado e transparente de certificação e acompanhamento logístico.
 
 
-## 👥 Usuários-Alvo
+## Usuários-Alvo
 - **Produtores Rurais**
 - **Pequenas e Médias Empresas (PMEs)**
 
 
-## 🔑 Funcionalidades-Chave do MVP
+## Funcionalidades-Chave do MVP
 1. **Cadastramento e Mapeamento** de produtores e empresas  
 2. **Fluxo de Certificação**  
    - Envio de documentos  
@@ -48,7 +47,7 @@ O objetivo é entregar um MVP funcional que demonstre os fluxos essenciais de ce
 4. **Geração de Anúncios Automáticos em Marketplaces**
 
 
-## 👥 Equipe Alpha
+## Equipe Alpha
 
 | Integrante | Função |
 |-----------|--------|
