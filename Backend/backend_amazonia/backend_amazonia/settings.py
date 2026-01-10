@@ -79,7 +79,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',  # FORÇAR A USAR MYSQL
         'NAME': 'amazonia_marketing',          # Nome exato do banco que criamos
         'USER': 'root',                        # Seu usuário do MySQL
-        'PASSWORD': 'admin',                    # Sua senha (confirme se é essa mesma)
+        'PASSWORD': 'admin',                   # Senha
         'HOST': '127.0.0.1',                   # Localhost
         'PORT': '3306',                        # Porta padrão
     }
