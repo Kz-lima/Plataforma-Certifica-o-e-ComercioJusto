@@ -37,7 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'plataforma_certificacao.apps.PlataformaCertificacaoConfig',
+    'plataforma_certificacao',
 ]
 
 MIDDLEWARE = [

@@ -20,8 +20,9 @@ from plataforma_certificacao import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', views.login_view, name='login'), # Raiz é o login
+    path('', views.login_usuarios, name='login'), # Raiz é o login
     path('produtor/', views.home_produtor, name='home_produtor'),
+    path('empresa/', views.home_empresa, name='home_empresa'),
     path('auditoria/', views.home_admin, name='home_admin'),
     path('home/', views.home_padrao, name='home_padrao'),
     path('logout/', views.logout_view, name='logout'),
