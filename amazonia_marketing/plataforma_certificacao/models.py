@@ -7,7 +7,6 @@
 # Feel free to rename the models, but don't rename db_table values or field names.
 from django.db import models
 
-
 class Certificacoes(models.Model):
     id_certificacao = models.AutoField(primary_key=True)
     texto_autodeclaracao = models.TextField(blank=True, null=True)
