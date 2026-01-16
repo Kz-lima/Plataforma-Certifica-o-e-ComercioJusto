@@ -1,5 +1,5 @@
 """
-URL configuration for amazonia_marketing project.
+URL configuration for backend_amazonia project.
 
 The `urlpatterns` list routes URLs to views. For more information please see:
     https://docs.djangoproject.com/en/6.0/topics/http/urls/
@@ -16,14 +16,21 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
+<<<<<<< Updated upstream:Códigos/Backend/backend_amazonia/backend_amazonia/urls.py
+from core import views
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('', views.login_view, name='login'), # Raiz é o login
+=======
 from django.conf import settings
 from django.conf.urls.static import static
 from plataforma_certificacao import views
 
 urlpatterns = [
     path('', views.login_usuarios, name='login'),
+>>>>>>> Stashed changes:amazonia_marketing/amazonia_marketing/urls.py
     path('produtor/', views.home_produtor, name='home_produtor'),
-    path('empresa/', views.home_empresa, name='home_empresa'),
     path('auditoria/', views.home_admin, name='home_admin'),
     path('home/', views.home_padrao, name='home_padrao'),
     path('logout/', views.logout_view, name='logout'),

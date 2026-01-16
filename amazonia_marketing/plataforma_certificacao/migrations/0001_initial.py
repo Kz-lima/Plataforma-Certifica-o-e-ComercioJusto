@@ -6,6 +6,8 @@ import django.db.models.deletion
 import django.utils.timezone
 from django.conf import settings
 from django.db import migrations, models
+import django.db.models.deletion
+import django.core.validators
 
 
 class Migration(migrations.Migration):
@@ -90,5 +92,53 @@ class Migration(migrations.Migration):
                 ('admin_responsavel', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='certificacoes_auditadas', to=settings.AUTH_USER_MODEL)),
                 ('produto', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='plataforma_certificacao.produtos')),
             ],
+            options={
+                'db_table': 'usuarios',
+            },
+        ),
+        migrations.CreateModel(
+            name='Produtos',
+            fields=[
+                ('id_produto', models.AutoField(primary_key=True, serialize=False)),
+                ('nome', models.CharField(max_length=100)),
+                ('categoria', models.CharField(max_length=100)),
+                ('descricao', models.TextField(blank=True, null=True)),
+                ('preco', models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True)),
+                ('status_estoque', models.CharField(blank=True, max_length=10, null=True)),
+                ('usuario', models.ForeignKey(on_delete=django.db.models.deletion.DO_NOTHING, to='plataforma_certificacao.usuarios')),
+            ],
+            options={
+                'db_table': 'produtos',
+            },
+        ),
+        migrations.CreateModel(
+            name='Marketplace',
+            fields=[
+                ('id_anuncio', models.AutoField(primary_key=True, serialize=False)),
+                ('plataforma', models.CharField(max_length=80)),
+                ('conteudo_gerado', models.TextField(blank=True, null=True)),
+                ('data_geracao', models.DateField(blank=True, null=True)),
+                ('produto', models.ForeignKey(on_delete=django.db.models.deletion.DO_NOTHING, to='plataforma_certificacao.produtos')),
+            ],
+            options={
+                'db_table': 'marketplace',
+            },
+        ),
+        migrations.CreateModel(
+            name='Certificacoes',
+            fields=[
+                ('id_certificacao', models.AutoField(primary_key=True, serialize=False)),
+                ('texto_autodeclaracao', models.TextField(blank=True, null=True)),
+                ('documento', models.CharField(max_length=255)),
+                ('arquivo_autodeclaracao', models.FileField(blank=True, help_text='Arquivo de autodeclaração (máximo 5MB). Formatos aceitos: PDF, DOC, DOCX, JPG, PNG', null=True, upload_to='autodeclaracoes/%Y/%m/%d/', validators=[django.core.validators.FileExtensionValidator(allowed_extensions=['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'])])),
+                ('status_certificacao', models.CharField(blank=True, max_length=9, null=True)),
+                ('data_envio', models.DateField(blank=True, null=True)),
+                ('data_resposta', models.DateField(blank=True, null=True)),
+                ('admin_responsavel', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.DO_NOTHING, to='plataforma_certificacao.usuarios')),
+                ('produto', models.ForeignKey(on_delete=django.db.models.deletion.DO_NOTHING, to='plataforma_certificacao.produtos')),
+            ],
+            options={
+                'db_table': 'certificacoes',
+            },
         ),
     ]
