@@ -578,6 +578,17 @@ def ver_certificacoes(request):
     produtos_produtor = Produtos.objects.filter(usuario_id=usuario_id)
     certificacoes = Certificacoes.objects.filter(produto__in=produtos_produtor).order_by('-data_envio')
     
+    # Adicionar flag para cada certificação indicando se o arquivo existe
+    for cert in certificacoes:
+        if cert.arquivo_autodeclaracao:
+            try:
+                # Verificar se o arquivo físico existe
+                cert.arquivo_existe = cert.arquivo_autodeclaracao.storage.exists(cert.arquivo_autodeclaracao.name)
+            except:
+                cert.arquivo_existe = False
+        else:
+            cert.arquivo_existe = False
+    
     context = {
         'certificacoes': certificacoes,
         'usuario_nome': request.session.get('usuario_nome'),
@@ -638,6 +649,7 @@ def admin_visualizar_certificacoes(request):
 def admin_responder_certificacao(request, certificacao_id):
     """
     View para admin aprovar/rejeitar uma certificação.
+    Atualiza o status para 'aprovado' ou 'rejeitado' e registra a data e admin.
     """
     # Segurança: Garante que só ADMIN entra aqui
     if request.session.get('usuario_tipo') != 'admin':
@@ -651,7 +663,7 @@ def admin_responder_certificacao(request, certificacao_id):
         acao = request.POST.get('acao')
         comentario = request.POST.get('comentario', '')
         
-        # Aceitar tanto 'aprovado'/'rejeitado' quanto 'aprovada'/'rejeitada' 
+        # Aceitar valores de ação
         if acao in ['aprovar', 'aprovado', 'aprovada']:
             certificacao.status_certificacao = 'aprovado'
             certificacao.data_resposta = datetime.now().date()
@@ -660,7 +672,7 @@ def admin_responder_certificacao(request, certificacao_id):
             
             messages.success(
                 request, 
-                f'Certificação aprovada com sucesso! Produto: {certificacao.produto.nome}'
+                f'✅ Certificação APROVADA com sucesso! Produto: {certificacao.produto.nome}'
             )
             return redirect('admin_visualizar_certificacoes')
             
@@ -672,7 +684,7 @@ def admin_responder_certificacao(request, certificacao_id):
             
             messages.warning(
                 request,
-                f'Certificação rejeitada. Produto: {certificacao.produto.nome}'
+                f'❌ Certificação REJEITADA. Produto: {certificacao.produto.nome}'
             )
             return redirect('admin_visualizar_certificacoes')
         else:
