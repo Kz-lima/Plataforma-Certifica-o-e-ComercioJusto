@@ -130,3 +130,12 @@ MEDIA_URL = '/media/'
 
 # Endereço físico do meu computador - > fotos serão guardadas na pasta media
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# Para a segurança de upload definimos os tipos de arquivos aceitos
+ALLOWED_UPLOAD_MIME_TYPES = [
+    'application/pdf', # .pdf
+    'application/msword', # .doc
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document', # .docx
+    'image/jpeg', # .jpg e jpeg
+    'image/png', # .png   
+]

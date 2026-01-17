@@ -1,8 +1,10 @@
 from django.shortcuts import render, redirect
-# Importamos a classe Usuarios que acabou de ser criada no models.py
-from .models import Usuarios, Produtos
+# Importamos as classes que criamos no models.py
+from .models import Usuarios, Produtos, Certificacoes
 # Importamos a classe ProdutoForm que criamos no forms.py
-from .forms import ProdutoForm
+from .forms import ProdutoForm, ProdutoComAutodeclaracaoForm
+# Importamos datetime
+from datetime import datetime
 
 
 # --- Função para exibir tela inicial ---
@@ -48,42 +50,7 @@ def login_usuarios(request):
         except Usuarios.DoesNotExist:
             msg = 'Usuário ou senha inválidos. Tente novamente'
     
-    return render(request, 'login.html', {'msg': msg })
-   
-# --- Função para fazer login no sistema ---
-def login_usuarios(request):
-    msg = None
-    if request.method == 'POST':
-        # Pega os dados do formulário HTML.
-        email_form = request.POST.get('email')
-        senha_form = request.POST.get('senha')
-        
-        try:
-            # BUSCA NO BANCO:
-            # Procura um usuario onde o email e a senha correspondem com o formulário.
-            usuario = Usuarios.objects.get(email=email_form, senha=senha_form)
-            
-            # SUCESSO! Salva os dados na "sessão" (memória do navegador).
-            request.session['usuario_id'] = usuario.id_usuario
-            request.session['usuario_tipo'] = usuario.tipo
-            request.session['usuario_nome'] = usuario.nome
-            
-            # LÓGICA DE REDIRECIONAMENTO (O requisito da Sprint 3).
-            # Verifica o campo 'tipo' que veio do banco de dados
-            if usuario.tipo == 'produtor':
-                return redirect('home_produtor')
-            elif usuario.tipo == 'admin':
-                return redirect('home_admin')
-            elif usuario.tipo == 'empresa':
-                return redirect('home_empresa')
-            else:
-                return redirect('home_padrao')
-
-        except Usuarios.DoesNotExist:
-            # Se não achar ninguém com esse email/senha
-            msg = "Usuário ou senha inválidos. Tente novamente."
-
-    return render(request, 'registration/login.html', {'msg': msg})
+    return render(request, 'registration/login.html', {'msg': msg })
 
 # --- Função de Segurança (Decorador) ---
 # Se alguém tentar acessar direto pela URL sem logar, essa função chuta de volta.
@@ -95,13 +62,77 @@ def verificar_autenticacao(view_func):
     return wrapper
 
 # --- As Telas Protegidas ---
+
+# --- DASHBOARD DO PRODUTOR ---
 @verificar_autenticacao
 def home_produtor(request):
     # Segurança extra: Garante que só PRODUTOR entra aqui
     if request.session.get('usuario_tipo') != 'produtor':
          return redirect('login')
+    
+    # Identifica quem é o produtor logado
+    usuario_id = request.session.get('usuario_id')
+    # Filtra produtos que o dono é o usuário logado
+    produtos = Produtos.objects.filter(usuario_id=usuario_id)
+    
+    # Lógica para entregar produtos cadastros para o frontend (HTML)
+    contexto = {
+        'produtos': produtos
+    }
+    
     # Renderiza a tela passando o nome do usuário para o HTML
-    return render(request, 'home_produtor.html')
+    return render(request, 'home_produtor.html', contexto)
+
+# --- ENVIO DE DOCUMENTO PELO PRODUTOR (AUTODECLARAÇÃO) ---
+@verificar_autenticacao
+def enviar_autodeclaracao(request):
+    # Segurança de perfil, garante que só o produtor faça o envio
+    if request.session.get('usuario_tipo') != 'produtor':
+        return redirect('home_padrao')
+    # Identificando o usuário logado
+    usuario_id = request.session.get('usuario_id')
+    # Processando o formulário (POST)
+    if request.method == 'POST':
+        form = ProdutoComAutodeclaracaoForm(request.POST, request.FILES)
+        form.fields['produto'].queryset = Produtos.objects.filter(usuario_id=usuario_id)
+        
+        if form.is_valid():
+            # Extrair os dados do formulário
+            produto_selecionado = form.cleaned_data['produto']
+            texto = form.cleaned_data['texto_autodeclaracao']
+            arquivo = form.cleaned_data['arquivo_autodeclaracao']
+            
+            # 5. Regra de Negócio: Criação da Certificação
+            nova_certificacao = Certificacoes(
+                # Extraindo os dados do formulário
+                produto = produto_selecionado,
+                texto_autodeclaracao = texto,
+                # Se tiver arquivo, salva o arquivo. Se não, salva None.
+                documento = arquivo,
+                # Implementado a lógica de negócio: status nasce como pendente até um admin aprovar
+                status_certificacao = 'pendente',
+                data_envio = datetime.now().date(),
+                
+                # Admin responsável começa vazio (ninguém aprovou ainda)
+                admin_responsavel = None,
+            )
+            nova_certificacao.save()
+            # Feedback e redicionamento (VAMOS IMPLEMENTAR FEEDBACK DEPOIS)
+            return redirect('home_produtor')
+    else:
+        # Considera que é um GET: exibe a tela inicial
+        form = ProdutoComAutodeclaracaoForm()
+        # Aqui mostramos apenas os produtos que o usuario logado é dono
+        form.fields['produto'].queryset = Produtos.objects.filter(usuario_id=usuario_id)
+        
+    contexto = {
+        'form': form,
+        'usuario_nome': request.session.get('usuario_nome')
+    }
+    
+    return render(request, 'enviar_autodeclaracao.html', contexto)
+
+
 
 @verificar_autenticacao
 def home_empresa(request):
