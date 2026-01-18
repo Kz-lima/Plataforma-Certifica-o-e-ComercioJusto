@@ -6,23 +6,9 @@
 
 <style>
     /* BANNER */
-    .banner {
-    background-color: var(--verde-amazonia); /* só trocou a cor */
-    color: white;
-    text-align: center;
-    padding: 60px 20px;
-    margin-bottom: 40px;
-}
-
-    .banner h1 {
-        font-size: 2.5rem;
-        margin-bottom: 0.5rem;
-    }
-
-    .banner p {
-        font-size: 1.1rem;
-        opacity: 0.9;
-    }
+    .banner { background-color: var(--verde-amazonia); color: white; text-align: center;padding: 60px 20px; margin-bottom: 40px;}
+    .banner h1 {font-size: 2.5rem;margin-bottom: 0.5rem;}
+    .banner p {font-size: 1.1rem; opacity: 0.9;}
 
     /* GRID DE PRODUTOS */
     .produtos-titulo {
@@ -99,30 +85,49 @@
     {% endif %}
 </div>
 
-<h2 class="produtos-titulo">Produtos em Destaque</h2>
+<h2 class="produtos-titulo">Produtos Certificados</h2>
 
 <div class="grid">
-    {% for p in nome %}
-        <div class="card">
-            <div class="card-img">
-                {% if p.imagem %}
-                    <img src="{{ p.imagem.url }}" alt="{{ p.nome }}" style="width:100%; height:100%; object-fit:cover;">
-                {% else %}
-                    Sem imagem
-                {% endif %}
+    {% for p in produtos %}
+        {% empty %}
+    <div style="background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); position: relative; transition: transform 0.2s;">
+        
+        {% if p.tem_selo %}
+            <div style="
+                position: absolute; 
+                top: 10px; 
+                right: 10px; 
+                background-color: #DABB2C; /* Amarelo da Marca */
+                color: #1C3E1D;           /* Verde da Marca */
+                padding: 5px 10px; 
+                border-radius: 20px; 
+                font-weight: bold; 
+                font-size: 0.8rem;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+                z-index: 10;">
+                ⭐ Certificado
             </div>
-
-            <div class="card-body">
-                <h3>{{ p.nome }}</h3>
-                <div class="categoria">{{ p.categoria }}</div>
-                <div class="preco">R$ {{ p.preco }}</div>
-                <div class="produtor">
-                    Produtor: {{ p.usuario.nome }}
-                </div>
-            </div>
+        {% endif %}
+        <div style="height: 200px; overflow: hidden; background-color: #f4f4f4; display: flex; align-items: center; justify-content: center;">
+            {% if p.imagem %}
+                <img src="{{ p.imagem.url }}" style="width: 100%; height: 100%; object-fit: cover;">
+            {% else %}
+                <span style="color: #999;">Sem Foto</span>
+            {% endif %}
         </div>
-    {% empty %}
-        <p>Nenhum produto disponível no momento.</p>
+
+        <div style="padding: 15px;">
+            <h3 style="margin: 0; color: #333;">{{ p.nome }}</h3>
+            <p style="color: #666; font-size: 0.9rem;">{{ p.categoria }}</p>
+            <p style="color: #1C3E1D; font-weight: bold; font-size: 1.2rem; margin-top: 10px;">
+                R$ {{ p.preco }}
+            </p>
+            
+            <button style="width: 100%; padding: 10px; background-color: #1C3E1D; color: white; border: none; border-radius: 5px; cursor: pointer; margin-top: 10px;">
+                Ver Detalhes
+            </button>
+        </div>
+    </div>
     {% endfor %}
 </div>
 

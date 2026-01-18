@@ -17,14 +17,29 @@ from django.shortcuts import get_object_or_404
 # --- Função para exibir tela inicial ---
 def home_publica(request):
     # Filtra apenas produtos disponíveis e armazena na variável
-    produtos_disponiveis = Produtos.objects.filter(status_estoque='diponivel')
-    # Dados que o frontend precisa receber 
-    dados_front = {
-        'produtos': produtos_disponiveis,
-        'usuario_logado': request.session.get('usuario_nome'),
-    }
-
-    return render(request, 'index.html', dados_front)
+    produtos = Produtos.objects.filter(status_estoque='disponivel')
+    
+    # --- DEBUG (Raio-X) ---
+    # Isso vai imprimir no terminal preto do VS Code
+    print(f"--- INICIO DEBUG ---")
+    print(f"Quantidade encontrada: {produtos.count()}")
+    if produtos.exists():
+        p = produtos.first()
+        print(f"Primeiro Produto: ID={p.id_produto} | Nome={p.nome} | Preco={p.preco}")
+        print(f"Colunas do Objeto: {p.__dict__}") # Mostra tudo que o Django leu do banco
+    print(f"--- FIM DEBUG ---")
+    # ----------------------
+    
+    # Filtrando apenas os produtos com selo aprovado
+    ids_com_selo = Certificacoes.objects.filter(status_certificacao='aprovado').values_list('produto_id', flat=True)
+    # Marcando os produtos antes de enviar para o front (com/sem selo)
+    for p in produtos:
+        if p.id_produto in ids_com_selo:
+            p.tem_selo = True
+        else:
+            p.tem_selo = False
+        
+    return render(request, 'index.html', {'produtos': produtos})
 
 # --- Função para fazer login no sistema ---
 def login_usuarios(request):
@@ -222,12 +237,6 @@ def deletar_produto(request, produto_id):
     messages.success(request, f'Produto: {nome_produto} removido!')   
     return redirect('home_produtor')
     
-    
-
-
-
-
-
 @verificar_autenticacao
 def home_empresa(request):
     # Segurança extra: Garante que só EMPRESA entra aqui
@@ -236,12 +245,78 @@ def home_empresa(request):
         # Renderiza a tela passando o nome do usuário para o HTML
     return render(request, 'home_empresa.html')
 
+# -- DASHBOARD DO ADMINISTRADOR ---
 @verificar_autenticacao
 def home_admin(request):
     # Segurança extra: Garante que só ADMIN entra aqui
     if request.session.get('usuario_tipo') != 'admin':
-         return redirect('login')
-    return render(request, 'home_admin.html')
+        messages.error(request, 'Acesso restrito a administradores!')
+        return redirect('login')
+    
+    # Métricas para exibir no dashboard 
+    # Contamos quantos pedidos existem em cada fila 
+    pendente = Certificacoes.objects.filter(status_certificacao='pendente').count()
+    aprovado = Certificacoes.objects.filter(status_certificacao='aprovado').count()
+    reprovado = Certificacoes.objects.filter(status_certificacao='reprovado').count()
+    
+    # Prepara os dados para serem enviados para o HTML
+    contexto = {
+        'pendente': pendente,
+        'aprovado': aprovado,
+        'reprovado': reprovado,
+        'usuario_nome': request.session.get('usuario_nome'),
+    }
+    return render(request, 'home_admin.html', contexto)
+
+# Função para visualização dos certificados pelo administrador
+@verificar_autenticacao
+def admin_visualizar_certificados(request):
+    # Segurança para garantir que apenas usuário do tipo admin visualizem os certificados
+    if request.session.get('usuario_tipo') != 'admin':
+        return redirect('login')
+    # Filtro para saber as auditorias pendentes 
+    status_filtro = request.GET.get('status')
+    # Consultando produtos e usuários juntos com 'select_related'
+    consulta = Certificacoes.objects.select_related('produto', 'produto__usuario').all().order_by('-data_envio')
+    if status_filtro: 
+        consulta = consulta.filter(status_certificacao=status_filtro)
+
+    contexto = {
+        'certificacoes': consulta,
+        'status_filtro': status_filtro,
+        'usuario_nome': request.session.get('usuario_nome'),
+    }
+    
+    return render(request, 'admin_certificacoes.html', contexto)
+
+# Função que o botão aprovar irá chamar
+@verificar_autenticacao
+def admin_responder_certificacoes(request, certificacao_id):
+    # Segurança: garantindo que somente admin possa ter essa ação
+    if request.session.get('usuario_tipo') != 'admin':
+        return redirect('login')
+    
+    certificacao = get_object_or_404(Certificacoes, id_certificacao=certificacao_id)
+    
+    if request.method == 'POST':
+        acao = request.POST.get('acao') # Pega o valor dobotão 
+        admin_id = request.session.get('usuario_id')
+        
+        if acao == 'aprovar':
+            certificacao.status_certificacao = 'aprovado'
+            messages.success(request, f'Certificação APROVADA para o produto {certificacao.produto.nome}!')
+        elif acao == 'rejeitar':
+            certificacao.status_certificacao = 'reprovado'
+            messages.warning(request, f'Certificação REJEITADA para o produto {certificacao.produto.nome}.')
+        
+        # Auditoria: Registra quem fez e quando
+        certificacao.data_resposta = datetime.now().date()
+        certificacao.admin_responsavel_id = admin_id
+        certificacao.save() # Atualiza no Banco
+        
+        return redirect('admin_visualizar_certificacoes')
+    
+    return redirect('home_admin')
 
 @verificar_autenticacao
 def home_padrao(request):

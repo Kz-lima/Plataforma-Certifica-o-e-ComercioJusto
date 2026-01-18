@@ -44,8 +44,8 @@
                 {% if request.session.usuario_tipo == 'produtor' %}
                     <a href="{% url 'home_produtor' %}">Meu Painel</a>
                 {% elif request.session.usuario_tipo == 'admin' %}
-                    <a href="{% url 'home_admin' %}">Auditoria</a>
-                {% elif request.session.usuario_tipo == 'empresa &'}
+                    <a href="{% url 'home_admin' %}">Painel Administrativo</a>
+                {% elif request.session.usuario_tipo == 'empresa' %}
                     <a href="{% url 'home_empresa' %}"></a>
                 {% endif %}
                 <a href="{% url 'logout' %}" style="color: #ffcccc;">Sair</a>
