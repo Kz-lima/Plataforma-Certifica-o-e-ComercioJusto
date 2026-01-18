@@ -48,7 +48,7 @@
                 {% elif request.session.usuario_tipo == 'empresa' %}
                     <a href="{% url 'home_empresa' %}"></a>
                 {% endif %}
-                <a href="{% url 'logout' %}" style="color: #ffcccc;">Sair</a>
+                <a href="{% url 'logout' %}" style="color: var(--verde-amazonia);">Sair</a>
             {% else %}
                 <a href="{% url 'login' %}">Entrar</a>
             {% endif %}

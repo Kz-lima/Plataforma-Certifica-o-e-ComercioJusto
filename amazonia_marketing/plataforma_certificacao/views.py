@@ -19,17 +19,6 @@ def home_publica(request):
     # Filtra apenas produtos disponíveis e armazena na variável
     produtos = Produtos.objects.filter(status_estoque='disponivel')
     
-    # --- DEBUG (Raio-X) ---
-    # Isso vai imprimir no terminal preto do VS Code
-    print(f"--- INICIO DEBUG ---")
-    print(f"Quantidade encontrada: {produtos.count()}")
-    if produtos.exists():
-        p = produtos.first()
-        print(f"Primeiro Produto: ID={p.id_produto} | Nome={p.nome} | Preco={p.preco}")
-        print(f"Colunas do Objeto: {p.__dict__}") # Mostra tudo que o Django leu do banco
-    print(f"--- FIM DEBUG ---")
-    # ----------------------
-    
     # Filtrando apenas os produtos com selo aprovado
     ids_com_selo = Certificacoes.objects.filter(status_certificacao='aprovado').values_list('produto_id', flat=True)
     # Marcando os produtos antes de enviar para o front (com/sem selo)

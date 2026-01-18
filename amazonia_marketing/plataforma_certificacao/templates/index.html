@@ -5,130 +5,181 @@
 {% block content %}
 
 <style>
-    /* BANNER */
-    .banner { background-color: var(--verde-amazonia); color: white; text-align: center;padding: 60px 20px; margin-bottom: 40px;}
-    .banner h1 {font-size: 2.5rem;margin-bottom: 0.5rem;}
-    .banner p {font-size: 1.1rem; opacity: 0.9;}
+    /* BANNER  */
+    .banner { 
+        background-color: var(--verde-amazonia); 
+        color: white; 
+        text-align: center;
+        padding: 60px 20px; 
+        margin-bottom: 40px;
+        
+        /* Ajuste para ficar contido e bonito */
+        width: 100%;
+        border-radius: 10px;
+        box-shadow: 0 10px 20px rgba(28, 62, 29, 0.15); 
+    }
+    
+    .banner h1 {
+        font-size: 2.5rem; 
+        margin-bottom: 1rem; 
+        font-weight: 700;
+    }
+    
+    .banner p {
+        font-size: 1.2rem; 
+        opacity: 0.95; 
+        max-width: 700px; 
+        margin: 0 auto;
+    }
 
-    /* GRID DE PRODUTOS */
+    /* TÍTULO */
     .produtos-titulo {
         margin-bottom: 1.5rem;
         color: var(--verde-amazonia);
+        font-size: 1.8rem;
+        border-left: 5px solid var(--amarelo-sol);
+        padding-left: 15px;
     }
 
+    /* GRID DE PRODUTOS */
     .grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-        gap: 20px;
+        /* Reduzi para 230px. Isso permite caber 4 cards em telas de laptop padrão */
+        grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); 
+        gap: 25px; /* Espaço entre os cards */
+        padding-bottom: 50px;
     }
 
     .card {
         background: white;
-        border: 1px solid #ddd;
-        border-radius: 8px;
+        border: 1px solid #eee;
+        border-radius: 12px;
         overflow: hidden;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-        transition: transform 0.2s ease;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        position: relative;
+        display: flex;       /* Garante que o card estique */
+        flex-direction: column;
     }
 
     .card:hover {
-        transform: translateY(-3px);
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        border-color: var(--verde-amazonia);
     }
 
-    .card-img {
-        height: 180px;
-        background: #eee;
+    .card-img-container {
+        height: 200px; /* Altura fixa para alinhar todos */
+        overflow: hidden;
+        background-color: #f8f9fa;
         display: flex;
         align-items: center;
         justify-content: center;
-        color: #999;
-        font-size: 0.9rem;
+        border-bottom: 1px solid #f0f0f0;
     }
 
     .card-body {
         padding: 15px;
+        flex-grow: 1; /* Faz o corpo ocupar o espaço restante */
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
     }
 
-    .card-body h3 {
-        margin: 0 0 5px;
-        color: var(--verde-amazonia);
-    }
-
-    .categoria {
-        font-size: 0.85rem;
-        color: #666;
-        margin-bottom: 8px;
-    }
-
-    .preco {
-        color: var(--verde-amazonia);
+    .btn-detalhes {
+        width: 100%; 
+        padding: 10px; 
+        background-color: var(--verde-amazonia); 
+        color: white; 
+        border: none; 
+        border-radius: 6px; 
+        cursor: pointer; 
+        margin-top: 10px;
         font-weight: bold;
-        font-size: 1.2rem;
-        margin: 10px 0;
+        transition: background 0.2s;
+    }
+    
+    .btn-detalhes:hover {
+        background-color: #142e15;
     }
 
-    .produtor {
-        font-size: 0.8rem;
-        color: #777;
+    /* SELO DE QUALIDADE */
+    .selo-flutuante {
+        position: absolute; 
+        top: 10px; 
+        right: 10px; 
+        background-color: #DABB2C; 
+        color: #1C3E1D; 
+        padding: 5px 12px; 
+        border-radius: 20px; 
+        font-weight: bold; 
+        font-size: 0.75rem;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
     }
-   
 </style>
 
 <div class="banner">
     <h1>Do campo para a mesa</h1>
-    <p>Produtos certificados e sustentáveis da Amazônia</p>
+    <p>Conectando produtores rurais a consumidores conscientes. Produtos certificados e sustentáveis da Amazônia.</p>
 
     {% if not request.session.usuario_id %}
-        <a href="{% url 'login' %}" class="btn btn-destaque" style="margin-top: 20px;">
+        <a href="{% url 'login' %}" class="btn btn-destaque" style="margin-top: 25px; padding: 12px 30px; background-color: white; color: var(--verde-amazonia); border: none; font-weight: bold;">
             Quero Comprar ou Vender
         </a>
     {% endif %}
 </div>
 
-<h2 class="produtos-titulo">Produtos Certificados</h2>
+<h2 class="produtos-titulo">Vitrine de Produtos</h2>
 
 <div class="grid">
+    
     {% for p in produtos %}
-        {% empty %}
-    <div style="background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); position: relative; transition: transform 0.2s;">
-        
-        {% if p.tem_selo %}
-            <div style="
-                position: absolute; 
-                top: 10px; 
-                right: 10px; 
-                background-color: #DABB2C; /* Amarelo da Marca */
-                color: #1C3E1D;           /* Verde da Marca */
-                padding: 5px 10px; 
-                border-radius: 20px; 
-                font-weight: bold; 
-                font-size: 0.8rem;
-                box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-                z-index: 10;">
-                ⭐ Certificado
-            </div>
-        {% endif %}
-        <div style="height: 200px; overflow: hidden; background-color: #f4f4f4; display: flex; align-items: center; justify-content: center;">
-            {% if p.imagem %}
-                <img src="{{ p.imagem.url }}" style="width: 100%; height: 100%; object-fit: cover;">
-            {% else %}
-                <span style="color: #999;">Sem Foto</span>
-            {% endif %}
-        </div>
-
-        <div style="padding: 15px;">
-            <h3 style="margin: 0; color: #333;">{{ p.nome }}</h3>
-            <p style="color: #666; font-size: 0.9rem;">{{ p.categoria }}</p>
-            <p style="color: #1C3E1D; font-weight: bold; font-size: 1.2rem; margin-top: 10px;">
-                R$ {{ p.preco }}
-            </p>
+        <div class="card">
             
-            <button style="width: 100%; padding: 10px; background-color: #1C3E1D; color: white; border: none; border-radius: 5px; cursor: pointer; margin-top: 10px;">
-                Ver Detalhes
-            </button>
+            {% if p.tem_selo %}
+                <div class="selo-flutuante">
+                    ⭐ Certificado
+                </div>
+            {% endif %}
+
+            <div class="card-img-container">
+                {% if p.imagem %}
+                    <img src="/media/{{ p.imagem }}" style="width: 100%; height: 100%; object-fit: cover;">
+                {% else %}
+                    <span style="color: #999; font-size: 0.9rem;">Imagem Indisponível</span>
+                {% endif %}
+            </div>
+
+            <div class="card-body">
+                <div>
+                    <h3 style="margin: 0; color: #333; font-size: 1.1rem;">{{ p.nome }}</h3>
+                    <p style="color: #777; font-size: 0.85rem; margin-top: 5px;">{{ p.categoria }}</p>
+                </div>
+                
+                <div>
+                    <p style="color: var(--verde-amazonia); font-weight: 800; font-size: 1.3rem; margin: 15px 0 5px 0;">
+                        R$ {{ p.preco }}
+                    </p>
+                    
+                    <button class="btn-detalhes">
+                        Ver Detalhes
+                    </button>
+                </div>
+            </div>
         </div>
-    </div>
+        {% empty %}
+        <div style="grid-column: 1 / -1; text-align: center; padding: 50px; background: white; border-radius: 12px; border: 1px dashed #ccc;">
+            <h3 style="color: #555;">Nenhum produto disponível no momento.</h3>
+            <p style="color: #888;">Nossos produtores estão colhendo novidades para você.</p>
+        </div>
     {% endfor %}
+
 </div>
 
 {% endblock %}
