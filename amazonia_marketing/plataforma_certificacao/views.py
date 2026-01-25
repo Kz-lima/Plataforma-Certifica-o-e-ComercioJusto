@@ -1,16 +1,20 @@
-from django.shortcuts import render, redirect
-# Importamos as classes que criamos no models.py
-from .models import Usuarios, Produtos, Certificacoes
+# ------
+from django.shortcuts import render, redirect, get_object_or_404
+# Importanto ferramentas de segurança nativa do django
+from django.contrib.auth import authenticate, login, logout
+# Verifica a autenticação do login
+from django.contrib.auth.decorators import login_required
+# Importar modulo de alerta sucesso ou erro
+from django.contrib import messages
+# Importar novos modelos do banco 
+from .models import CustomUser, Produtos,Certificacoes
 # Importamos a classe ProdutoForm que criamos no forms.py
 from .forms import ProdutoForm, ProdutoComAutodeclaracaoForm
 # Importamos datetime
 from datetime import datetime
-# Importar modulo de alerta sucesso ou erro
-from django.contrib import messages
 # Para conseguir calcular os dados
 from django.db.models import Count
-# ------
-from django.shortcuts import get_object_or_404
+
 
 
 
@@ -30,38 +34,40 @@ def home_publica(request):
         
     return render(request, 'index.html', {'produtos': produtos})
 
-# --- Função para fazer login no sistema ---
+# Lógica para redicionar o usuário de acordo com o seu tipo 
+def redirecionar_por_tipo(user):
+    if user.tipo_usuario == 'produtor':
+        return redirect('home_produtor')
+    elif user.tipo_usuario == 'empresa':
+        return redirect('home_empresa') # Falta criar
+    elif user.tipo_usuario == 'auditor':
+        return redirect('home_admin')
+    elif user.is_superuser:
+        return redirect('/admin/')
+    else:
+        return redirect('home_padrao')
+
+# --- Função para fazer login no sistema (Atualizada com ferramentas nativas do django) ---
 def login_usuarios(request):
-    msg = None
+    if request.user.is_authenticated:
+        return redirecionar_por_tipo(request.user)
+    
+    # Pegamos os dados do html 
     if request.method == 'POST':
         email_form = request.POST.get('email')
         senha_form = request.POST.get('senha')
+        # authenticate: Verifica se user e senha batem de forma segura.
+        user = authenticate(request, username=email_form, password=senha_form)
         
-        # BUSCAR NO BANCO
-        try:
-            # Procura o usuário que tentou fazer o login no banco de dados
-            usuario = Usuarios.objects.get(email=email_form, senha=senha_form)
+        # Cria a sessão no navegador (o cookie seguro)
+        if user is not None:
+            login(request, user)
+            # Essa função decide para onde o usuário vai pelo seu tipo
+            return redirecionar_por_tipo(user)
+        else: 
+            messages.error(request, 'Usuário ou senha inválidos.')
             
-            # Usuário existe: salva os dados da sessão 
-            request.session['usuario_id'] = usuario.id_usuario
-            request.session['usuario_tipo'] = usuario.tipo
-            request.session['usuario_nome'] = usuario.nome
-            
-            # Lógica para redicionar o usuário de acordo com o seu tipo
-            if usuario.tipo == 'produtor':
-                return redirect('home_produtor')
-            elif usuario.tipo == 'empresa':
-                return redirect('home_empresa')
-            elif usuario.tipo == 'admin':
-                return redirect('home_admin')
-            else:
-                return redirect('home_padrao')
-            
-        # Caso não encontre ninguém com o email ou senha inseridos    
-        except Usuarios.DoesNotExist:
-            msg = 'Usuário ou senha inválidos. Tente novamente'
-    
-    return render(request, 'registration/login.html', {'msg': msg })
+    return render(request, 'registration/login.html')
 
 # --- Função de Segurança (Decorador) ---
 # Se alguém tentar acessar direto pela URL sem logar, essa função chuta de volta.
@@ -101,7 +107,7 @@ def home_produtor(request):
         produto__usuario_id = usuario_id,
         status_certificacao = 'aprovado',
     ).count()
-    
+       
     # Lógica para entregar produtos cadastros para o frontend (HTML)
     contexto = {
         'produtos': produtos,

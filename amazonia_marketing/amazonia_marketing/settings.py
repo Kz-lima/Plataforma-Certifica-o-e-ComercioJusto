@@ -139,3 +139,7 @@ ALLOWED_UPLOAD_MIME_TYPES = [
     'image/jpeg', # .jpg e jpeg
     'image/png', # .png   
 ]
+
+# AVISANDO O DJANGO DO CUSTOMUSER
+
+AUTH_USER_MODEL = 'plataforma_certificacao.CustomUser'
