@@ -54,7 +54,7 @@ def login_usuarios(request):
     
     # Pegamos os dados do html 
     if request.method == 'POST':
-        email_form = request.POST.get('email')
+        email_form = request.POST.get('username')
         senha_form = request.POST.get('senha')
         # authenticate: Verifica se user e senha batem de forma segura.
         user = authenticate(request, username=email_form, password=senha_form)
@@ -69,59 +69,48 @@ def login_usuarios(request):
             
     return render(request, 'registration/login.html')
 
-# --- Função de Segurança (Decorador) ---
-# Se alguém tentar acessar direto pela URL sem logar, essa função chuta de volta.
-def verificar_autenticacao(view_func):
-    def wrapper(request, *args, **kwargs):
-        if 'usuario_id' not in request.session:
-            return redirect('login') # Chuta para o login
-        return view_func(request, *args, **kwargs)
-    return wrapper
-
 # --- As Telas Protegidas ---
 
 # --- DASHBOARD DO PRODUTOR ---
-@verificar_autenticacao
+@login_required
 def home_produtor(request):
     # Segurança extra: Garante que só PRODUTOR entra aqui
-    if request.session.get('usuario_tipo') != 'produtor':
-         return redirect('login')
+    if request.user.tipo_usuario != 'produtor':
+        messages.error(request, 'Acesso não autorizado.')
+        return redirect('home_publica')
     
-    # Identifica quem é o produtor logado
-    usuario_id = request.session.get('usuario_id')
     # Filtra produtos que o dono é o usuário logado
-    produtos = Produtos.objects.filter(usuario_id=usuario_id)
+    produtos = Produtos.objects.filter(usuario=request.user)
     
     # CÁLCULO DE ALGUMAS MÉTRICAS PARA EXIBIR NO PERFIL DO PRODUTOR (FEEDBACK)
     # -- Quantos produtos ele cadastrados -- 
     total_produtos = produtos.count()
     
     # -- Quantas certificações ele tem pendente --
-    pendentes = Certificacoes.objects.filter(
-        produto__usuario_id = usuario_id,
-        status_certificacao = 'pendente',
-    ).count()
+    pendentes = Certificacoes.objects.filter(produto__usuario_id = request.user, status_certificacao = 'pendente',).count()
     
     # -- Quantas certificacoes ele tem aprovadas --
-    aprovados = Certificacoes.objects.filter(
-        produto__usuario_id = usuario_id,
-        status_certificacao = 'aprovado',
-    ).count()
+    aprovados = Certificacoes.objects.filter(produto__usuario_id = request.user, status_certificacao = 'aprovado',).count()
        
-    # Lógica para entregar produtos cadastros para o frontend (HTML)
+    # Dados do perfil 
+    try:
+        perfil = request.user.produtor_perfil
+    except:
+        perfil = None
+        
     contexto = {
         'produtos': produtos,
         'total_produtos': total_produtos,
         'pendentes': pendentes,
         'aprovados': aprovados,
-        'usuario_nome': request.session.get('usuario_nome'),
+        'usuario_nome': perfil,
     }
     
     # Renderiza a tela passando o nome do usuário para o HTML
     return render(request, 'home_produtor.html', contexto)
 
 # --- ENVIO DE DOCUMENTO PELO PRODUTOR (AUTODECLARAÇÃO) ---
-@verificar_autenticacao
+@login_required
 def enviar_autodeclaracao(request):
     # Segurança de perfil, garante que só o produtor faça o envio
     if request.session.get('usuario_tipo') != 'produtor':
@@ -172,7 +161,7 @@ def enviar_autodeclaracao(request):
     return render(request, 'enviar_autodeclaracao.html', contexto)
 
 # ---  Função para o produtor adicionar produtos ---
-@verificar_autenticacao
+@login_required
 def cadastro_produto(request):
     # Adiciona nova camada de segurança para garantir que apenas usuários do tipo 'produtor' possam cadastrar produto
     if request.session.get('usuario_tipo') != 'produtor':
@@ -208,8 +197,9 @@ def cadastro_produto(request):
         # Agora sim o formulário é enviado (renderizado) para o HTML
     return render(request, 'cadastro_produto.html', {'form': form}) 
         
-@verificar_autenticacao
+
 # Função deleta em cascata 
+@login_required
 def deletar_produto(request, produto_id):
     # Garantir que o produto existe para poder fazer algo com ele
     produto = get_object_or_404(Produtos, id_produto=produto_id)
@@ -232,7 +222,8 @@ def deletar_produto(request, produto_id):
     messages.success(request, f'Produto: {nome_produto} removido!')   
     return redirect('home_produtor')
     
-@verificar_autenticacao
+
+@login_required
 def home_empresa(request):
     # Segurança extra: Garante que só EMPRESA entra aqui
     if request.session.get('usuario_tipo') != 'empresa':
@@ -241,12 +232,12 @@ def home_empresa(request):
     return render(request, 'home_empresa.html')
 
 # -- DASHBOARD DO ADMINISTRADOR ---
-@verificar_autenticacao
+@login_required
 def home_admin(request):
     # Segurança extra: Garante que só ADMIN entra aqui
-    if request.session.get('usuario_tipo') != 'admin':
-        messages.error(request, 'Acesso restrito a administradores!')
-        return redirect('login')
+    if request.user.tipo_usuario != 'auditor' and not request.user.is_superuser:
+        messages.error(request, 'Acesso restrito a desenvolvedores!')
+        return redirect('home_publica')
     
     # Métricas para exibir no dashboard 
     # Contamos quantos pedidos existem em cada fila 
@@ -264,7 +255,7 @@ def home_admin(request):
     return render(request, 'home_admin.html', contexto)
 
 # Função para visualização dos certificados pelo administrador
-@verificar_autenticacao
+@login_required
 def admin_visualizar_certificados(request):
     # Segurança para garantir que apenas usuário do tipo admin visualizem os certificados
     if request.session.get('usuario_tipo') != 'admin':
@@ -285,7 +276,7 @@ def admin_visualizar_certificados(request):
     return render(request, 'admin_certificacoes.html', contexto)
 
 # Função que o botão aprovar irá chamar
-@verificar_autenticacao
+@login_required
 def admin_responder_certificacoes(request, certificacao_id):
     # Segurança: garantindo que somente admin possa ter essa ação
     if request.session.get('usuario_tipo') != 'admin':
@@ -313,15 +304,16 @@ def admin_responder_certificacoes(request, certificacao_id):
     
     return redirect('home_admin')
 
-@verificar_autenticacao
+@login_required
 def home_padrao(request):
     return render(request, 'home.html')
 
+@login_required
 # --- Função para deslogar o usuário ---
 def logout_view(request):
     # Limpa a sessão (desloga)
     request.session.flush()
-    return redirect('login')
+    return redirect('home_publica')
   
 # --- Função para cadastrar novo usuário ---
 

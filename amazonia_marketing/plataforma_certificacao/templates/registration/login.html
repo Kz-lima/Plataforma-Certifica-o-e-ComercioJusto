@@ -173,7 +173,7 @@
           {% load static %}  <img src="{% static 'logo_solta.png' %}"  alt="Logo">
         </div>
 
-        <form method="post">
+        <form method="post" action = "{% url 'login' %}">
 
             {% csrf_token %}
 
@@ -184,7 +184,7 @@
            
             <div class="campo_input">
                 <label>Email:</label>
-                <input type="text" name="email" required>
+                <input type="text" name="username" required>
             </div>
 
             <div class="campo_input">

@@ -39,15 +39,16 @@
     <header>
         <a href="{% url 'home_publica' %}" class="logo"> Amazônia Marketing </a>
         <nav class="nav-links">
-            {% if request.session.usuario_id %}
-                <span>Olá, {{ request.session.usuario_nome }}</span>
-                {% if request.session.usuario_tipo == 'produtor' %}
+            {% if user.is_authenticated %}
+                <span>Olá, {{ user.first_name|default:user.username }}</span>
+                {% if user.tipo_usuario == 'produtor' %}
                     <a href="{% url 'home_produtor' %}">Meu Painel</a>
-                {% elif request.session.usuario_tipo == 'admin' %}
+                {% elif user.tipo_usuario == 'admin' %}
                     <a href="{% url 'home_admin' %}">Painel Administrativo</a>
-                {% elif request.session.usuario_tipo == 'empresa' %}
+                {% elif user.tipo_usario == 'empresa' %}
                     <a href="{% url 'home_empresa' %}"></a>
                 {% endif %}
+                
                 <a href="{% url 'logout' %}" style="color: var(--verde-amazonia);">Sair</a>
             {% else %}
                 <a href="{% url 'login' %}">Entrar</a>
