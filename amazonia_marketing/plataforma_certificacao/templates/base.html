@@ -15,39 +15,40 @@
 
         body { font-family: 'Calibri', 'Segoe UI', sans-serif; margin: 0; background-color: var(--fundo); color: var(--texto); display: flex; flex-direction: column; min-height: 100vh; }
         
-        /* CABEÇALHO */
-        header { background-color: var(--verde-amazonia); color: white; padding: 1rem 3rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
-        .logo { font-size: 1.2rem; font-weight: bold; color: white; text-decoration: none;}
-        
-        /* BOTÕES DO MENU (NOVOS) */
-        .navbar-right { display: flex; align-items: center; gap: 15px; }
-
-        .btn-nav {
-            padding: 8px 15px;
-            border-radius: 4px;
+        /* CABEÇALHO PADRÃO PARA TODAS AS PÁGINAS HTML (DRY - Fica aqui e aparece em todas as telas) */
+        header { background-color: var(--verde-amazonia); color: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .logo { 
+            font-size: 1.5rem; 
+            font-weight: bold; 
+            color: white; 
             text-decoration: none;
-            font-weight: bold;
-            font-size: 0.9rem;
-            transition: transform 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: opacity 0.3s;
+        }
+        .logo:hover { opacity: 0.8; }
+        .logo-icon {
+            font-size: 2rem;
             display: inline-block;
         }
-        .btn-nav:hover { transform: scale(1.05); }
-
-        /* Cores dos Botões do Menu */
-        .btn-amarelo { background-color: var(--amarelo-sol); color: var(--verde-amazonia); }
-        .btn-entrar { background-color: white; color: var(--verde-amazonia); }
-
-        /* Botão Sair (Discreto) */
-        .btn-sair {
-            background: transparent;
-            border: 1px solid rgba(255,255,255,0.3);
-            color: white;
-            padding: 8px 15px;
-            border-radius: 4px;
-            cursor: pointer;
+        .logo-text {
+            display: flex;
+            flex-direction: column;
+            line-height: 1.2;
+        }
+        .logo-main {
+            font-size: 1.5rem;
             font-weight: bold;
         }
-        .btn-sair:hover { background: rgba(255,255,255,0.1); }
+        .logo-sub {
+            font-size: 0.75rem;
+            opacity: 0.85;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .nav-links a { color: var(--verde-amazonia); text-decoration: none; margin-left: 15px; font-weight: bold; transition: 0.3s; background-color: var(--amarelo-sol); padding: 6px 12px; border-radius: 2px;}
+        .nav-links a:hover { color: var(--verde-amazonia); background-color: var(--fundo); }
 
         /* ESTILOS GERAIS */
         .container { max-width: 1000px; margin: 2rem auto; padding: 0 1rem; flex: 1; }
@@ -64,20 +65,22 @@
 <body>
 
     <header>
-        <a href="{% url 'home_publica' %}" class="logo">Amazônia Marketing</a>
-        
-        <nav class="navbar-right">
-            {% if user.is_authenticated %}
-                <span style="font-size: 0.9rem;">Olá, {{ user.first_name|default:user.username }}</span>
-                
-                {% if user.tipo_usuario == 'produtor' %}
-                    <a href="{% url 'home_produtor' %}" class="btn-nav btn-amarelo">Meu Painel</a>
-                
-                {% elif user.tipo_usuario == 'auditor' or user.is_superuser %}
-                    <a href="{% url 'home_admin' %}" class="btn-nav btn-amarelo">Auditoria</a>
-                
-                {% elif user.tipo_usuario == 'empresa' %}
-                    <a href="{% url 'home_empresa' %}" class="btn-nav btn-amarelo">Minha Empresa</a>
+        <a href="{% url 'home_publica' %}" class="logo">
+            <span class="logo-icon">🌿</span>
+            <div class="logo-text">
+                <span class="logo-main">Amazônia Marketing</span>
+                <span class="logo-sub">Comércio Justo & Sustentável</span>
+            </div>
+        </a>
+        <nav class="nav-links">
+            {% if request.session.usuario_id %}
+                <span>Olá, {{ request.session.usuario_nome }}</span>
+                {% if request.session.usuario_tipo == 'produtor' %}
+                    <a href="{% url 'home_produtor' %}">Meu Painel</a>
+                {% elif request.session.usuario_tipo == 'admin' %}
+                    <a href="{% url 'home_admin' %}">Painel Administrativo</a>
+                {% elif request.session.usuario_tipo == 'empresa' %}
+                    <a href="{% url 'home_empresa' %}"></a>
                 {% endif %}
                 
                 <form action="{% url 'logout' %}" method="POST" style="margin: 0;">

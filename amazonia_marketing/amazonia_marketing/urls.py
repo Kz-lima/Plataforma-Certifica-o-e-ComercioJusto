@@ -39,8 +39,12 @@ urlpatterns = [
     
     # Django Admin (deve vir por último)
     path('admin/', admin.site.urls),
+    path('', include('plataforma_certificacao.urls')),
+    
+    # URLs do django-allauth (login social)
+    path('accounts/', include('allauth.urls')),
 ]
 
-# Servir arquivos de mídia em desenvolvimento
+# Configuração de arquivos de media (apenas em desenvolvimento)
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

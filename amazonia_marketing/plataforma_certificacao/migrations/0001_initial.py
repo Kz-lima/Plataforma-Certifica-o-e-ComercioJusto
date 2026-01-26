@@ -138,7 +138,41 @@ class Migration(migrations.Migration):
                 ('produto', models.ForeignKey(on_delete=django.db.models.deletion.DO_NOTHING, to='plataforma_certificacao.produtos')),
             ],
             options={
-                'db_table': 'certificacoes',
+                'db_table': 'Usuarios',
+            },
+        ),
+        migrations.CreateModel(
+            name='Marketplace',
+            fields=[
+                ('id_anuncio', models.AutoField(primary_key=True, serialize=False)),
+                ('plataforma', models.CharField(max_length=80)),
+                ('conteudo_gerado', models.TextField(blank=True, null=True)),
+                ('data_geracao', models.DateField(blank=True, null=True)),
+                ('produto', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.DO_NOTHING, to='plataforma_certificacao.produtos')),
+            ],
+            options={
+                'db_table': 'Marketplace',
+            },
+        ),
+        migrations.AddField(
+            model_name='produtos',
+            name='usuario',
+            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.DO_NOTHING, to='plataforma_certificacao.usuarios'),
+        ),
+        migrations.CreateModel(
+            name='Certificacoes',
+            fields=[
+                ('id_certificacao', models.AutoField(primary_key=True, serialize=False)),
+                ('texto_autodeclaracao', models.TextField(blank=True, null=True)),
+                ('documento', models.FileField(max_length=255, upload_to='certificacoes/')),
+                ('status_certificacao', models.CharField(blank=True, max_length=9, null=True)),
+                ('data_envio', models.DateField(blank=True, null=True)),
+                ('data_resposta', models.DateField(blank=True, null=True)),
+                ('produto', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.DO_NOTHING, to='plataforma_certificacao.produtos')),
+                ('admin_responsavel', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.DO_NOTHING, to='plataforma_certificacao.usuarios')),
+            ],
+            options={
+                'db_table': 'Certificacoes',
             },
         ),
     ]
