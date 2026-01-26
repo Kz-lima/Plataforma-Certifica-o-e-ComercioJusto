@@ -1,0 +1,195 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Checkout - Amazônia Marketing{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 1200px; margin: 2rem auto; padding: 0 1rem;">
+    
+    <div style="background: linear-gradient(135deg, #27ae60 0%, #229954 100%); color: white; padding: 2rem; border-radius: 12px; margin-bottom: 2rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        <h1 style="margin: 0 0 0.5rem 0; font-size: 2rem;">💳 Finalizar Compra</h1>
+        <p style="margin: 0; opacity: 0.9;">Preencha os dados de entrega e pagamento</p>
+    </div>
+
+    <form method="post" style="display: grid; grid-template-columns: 1fr 350px; gap: 2rem;">
+        {% csrf_token %}
+        
+        <!-- Formulário de Dados -->
+        <div>
+            <!-- Dados de Entrega -->
+            <div style="background: white; padding: 2rem; border-radius: 12px; margin-bottom: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <h2 style="color: #2c3e50; margin: 0 0 1.5rem 0; border-bottom: 2px solid #ecf0f1; padding-bottom: 1rem;">
+                    📦 Dados de Entrega
+                </h2>
+                
+                <div style="display: grid; gap: 1rem;">
+                    <div>
+                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: #34495e;">
+                            Endereço Completo *
+                        </label>
+                        <input type="text" name="endereco" required value="{{ usuario.endereco }}" style="width: 100%; padding: 0.75rem; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 1rem;">
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 1rem;">
+                        <div>
+                            <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: #34495e;">
+                                Cidade *
+                            </label>
+                            <input type="text" name="cidade" required style="width: 100%; padding: 0.75rem; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 1rem;">
+                        </div>
+                        
+                        <div>
+                            <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: #34495e;">
+                                Estado *
+                            </label>
+                            <select name="estado" required style="width: 100%; padding: 0.75rem; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 1rem;">
+                                <option value="">Selecione</option>
+                                <option value="AC">AC</option>
+                                <option value="AM">AM</option>
+                                <option value="AP">AP</option>
+                                <option value="PA">PA</option>
+                                <option value="RO">RO</option>
+                                <option value="RR">RR</option>
+                                <option value="TO">TO</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: #34495e;">
+                                CEP *
+                            </label>
+                            <input type="text" name="cep" required pattern="\d{5}-?\d{3}" placeholder="00000-000" style="width: 100%; padding: 0.75rem; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 1rem;">
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: #34495e;">
+                            Telefone de Contato *
+                        </label>
+                        <input type="tel" name="telefone" required value="{{ usuario.telefone }}" placeholder="(00) 00000-0000" style="width: 100%; padding: 0.75rem; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 1rem;">
+                    </div>
+                    
+                    <div>
+                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: #34495e;">
+                            Observações (opcional)
+                        </label>
+                        <textarea name="observacoes" rows="3" placeholder="Ponto de referência, observações para entrega..." style="width: 100%; padding: 0.75rem; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 1rem;"></textarea>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Método de Pagamento -->
+            <div style="background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <h2 style="color: #2c3e50; margin: 0 0 1.5rem 0; border-bottom: 2px solid #ecf0f1; padding-bottom: 1rem;">
+                    💳 Forma de Pagamento
+                </h2>
+                
+                <div style="display: grid; gap: 1rem;">
+                    <label style="display: flex; align-items: center; padding: 1rem; border: 2px solid #e0e0e0; border-radius: 8px; cursor: pointer; transition: all 0.3s;">
+                        <input type="radio" name="metodo_pagamento" value="pix" required style="margin-right: 1rem; width: 20px; height: 20px;">
+                        <div>
+                            <div style="font-weight: bold; color: #2c3e50;">PIX</div>
+                            <div style="color: #7f8c8d; font-size: 0.9rem;">Aprovação instantânea</div>
+                        </div>
+                    </label>
+                    
+                    <label style="display: flex; align-items: center; padding: 1rem; border: 2px solid #e0e0e0; border-radius: 8px; cursor: pointer; transition: all 0.3s;">
+                        <input type="radio" name="metodo_pagamento" value="cartao_credito" style="margin-right: 1rem; width: 20px; height: 20px;">
+                        <div>
+                            <div style="font-weight: bold; color: #2c3e50;">Cartão de Crédito</div>
+                            <div style="color: #7f8c8d; font-size: 0.9rem;">Em até 12x sem juros</div>
+                        </div>
+                    </label>
+                    
+                    <label style="display: flex; align-items: center; padding: 1rem; border: 2px solid #e0e0e0; border-radius: 8px; cursor: pointer; transition: all 0.3s;">
+                        <input type="radio" name="metodo_pagamento" value="boleto" style="margin-right: 1rem; width: 20px; height: 20px;">
+                        <div>
+                            <div style="font-weight: bold; color: #2c3e50;">Boleto Bancário</div>
+                            <div style="color: #7f8c8d; font-size: 0.9rem;">Pagamento em até 3 dias úteis</div>
+                        </div>
+                    </label>
+                    
+                    <label style="display: flex; align-items: center; padding: 1rem; border: 2px solid #e0e0e0; border-radius: 8px; cursor: pointer; transition: all 0.3s;">
+                        <input type="radio" name="metodo_pagamento" value="mercado_pago" style="margin-right: 1rem; width: 20px; height: 20px;">
+                        <div>
+                            <div style="font-weight: bold; color: #2c3e50;">Mercado Pago</div>
+                            <div style="color: #7f8c8d; font-size: 0.9rem;">Diversas opções de pagamento</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Resumo do Pedido -->
+        <div>
+            <div style="background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); position: sticky; top: 20px;">
+                <h2 style="margin: 0 0 1.5rem 0; color: #2c3e50; border-bottom: 2px solid #ecf0f1; padding-bottom: 1rem;">
+                    Resumo da Compra
+                </h2>
+                
+                <div style="max-height: 300px; overflow-y: auto; margin-bottom: 1rem;">
+                    {% for item in itens %}
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid #ecf0f1;">
+                        <div style="flex: 1;">
+                            <div style="font-weight: 600; color: #2c3e50; margin-bottom: 0.25rem;">{{ item.produto.nome }}</div>
+                            <div style="color: #7f8c8d; font-size: 0.9rem;">Qtd: {{ item.quantidade }}</div>
+                        </div>
+                        <div style="font-weight: bold; color: #27ae60;">R$ {{ item.get_subtotal }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <div style="margin-bottom: 1rem;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <span style="color: #7f8c8d;">Subtotal:</span>
+                        <span style="font-weight: 600;">R$ {{ total }}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <span style="color: #7f8c8d;">Frete:</span>
+                        <span style="font-weight: 600; color: #27ae60;">Grátis</span>
+                    </div>
+                </div>
+                
+                <div style="border-top: 2px solid #ecf0f1; padding-top: 1rem; margin-bottom: 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; font-size: 1.25rem;">
+                        <span style="font-weight: bold; color: #2c3e50;">Total:</span>
+                        <span style="font-weight: bold; color: #27ae60;">R$ {{ total }}</span>
+                    </div>
+                </div>
+                
+                <button type="submit" style="width: 100%; padding: 1rem; background: linear-gradient(135deg, #27ae60 0%, #229954 100%); color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 1.1rem; cursor: pointer; transition: transform 0.3s;">
+                    Confirmar Pedido
+                </button>
+                
+                <a href="{% url 'ver_carrinho' %}" style="display: block; width: 100%; padding: 1rem; background: #95a5a6; color: white; text-align: center; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 1rem; transition: transform 0.3s;">
+                    Voltar ao Carrinho
+                </a>
+                
+                <div style="margin-top: 1.5rem; padding: 1rem; background: #ecf0f1; border-radius: 8px;">
+                    <div style="font-size: 0.85rem; color: #7f8c8d; text-align: center;">
+                        🔒 Compra 100% segura<br>
+                        Seus dados estão protegidos
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+
+</div>
+
+<style>
+    button:hover, a:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    
+    input[type="radio"]:checked + div {
+        color: #27ae60;
+    }
+    
+    label:has(input[type="radio"]:checked) {
+        border-color: #27ae60;
+        background: #f0fff4;
+    }
+</style>
+{% endblock %}

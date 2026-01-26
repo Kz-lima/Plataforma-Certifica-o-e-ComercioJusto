@@ -1,0 +1,230 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Detalhes da Certificação #{{ certificacao.id_certificacao }}{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 1200px; margin: 2rem auto; padding: 0 1rem;">
+    
+    <!-- Cabeçalho -->
+    <div style="background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%); color: white; padding: 2rem; border-radius: 12px; margin-bottom: 2rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <h1 style="margin: 0 0 0.5rem 0;">&#128203; Certifica&ccedil;&atilde;o #{{ certificacao.id_certificacao }}</h1>
+                <p style="margin: 0; opacity: 0.9;">Análise completa da solicitação</p>
+            </div>
+            <div style="text-align: right;">
+                <span style="display: inline-block; padding: 0.5rem 1rem; border-radius: 8px; font-weight: 600; font-size: 1.1rem; background: rgba(255,255,255,0.2);">
+                    {% if certificacao.status_certificacao == 'pendente' %}
+                        ⏳ Pendente
+                    {% elif certificacao.status_certificacao == 'aprovado' %}
+                        ✓ Aprovado
+                    {% else %}
+                        ✗ Reprovado
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Grid Principal -->
+    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem;">
+        
+        <!-- Coluna Esquerda: Informações Detalhadas -->
+        <div>
+            <!-- Card: Informações do Produto -->
+            <div style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 1.5rem;">
+                <h2 style="color: #2c3e50; border-bottom: 2px solid #9b59b6; padding-bottom: 0.5rem; margin-bottom: 1rem;">
+                    &#128230; Produto Certificado
+                </h2>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div>
+                        <strong style="color: #7f8c8d;">Nome do Produto:</strong>
+                        <p style="margin: 0.25rem 0 0 0; font-size: 1.1rem; color: #2c3e50;">{{ produto.nome }}</p>
+                    </div>
+                    <div>
+                        <strong style="color: #7f8c8d;">Categoria:</strong>
+                        <p style="margin: 0.25rem 0 0 0; color: #2c3e50;">{{ produto.categoria }}</p>
+                    </div>
+                    <div>
+                        <strong style="color: #7f8c8d;">Preço:</strong>
+                        <p style="margin: 0.25rem 0 0 0; color: #27ae60; font-weight: 600;">R$ {{ produto.preco }}</p>
+                    </div>
+                    <div>
+                        <strong style="color: #7f8c8d;">Status Estoque:</strong>
+                        <p style="margin: 0.25rem 0 0 0; color: #2c3e50;">{{ produto.get_status_estoque_display }}</p>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 1rem;">
+                    <strong style="color: #7f8c8d;">Descrição:</strong>
+                    <p style="margin: 0.25rem 0 0 0; color: #2c3e50; line-height: 1.6;">{{ produto.descricao|default:"Sem descrição" }}</p>
+                </div>
+
+                {% if produto.imagem %}
+                <div style="margin-top: 1rem;">
+                    <strong style="color: #7f8c8d; display: block; margin-bottom: 0.5rem;">Imagem do Produto:</strong>
+                    <img src="{{ produto.imagem.url }}" alt="{{ produto.nome }}" style="max-width: 100%; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Card: Autodeclaração -->
+            <div style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 1.5rem;">
+                <h2 style="color: #2c3e50; border-bottom: 2px solid #9b59b6; padding-bottom: 0.5rem; margin-bottom: 1rem;">
+                    &#9997;&#65039; Autodeclara&ccedil;&atilde;o
+                </h2>
+                
+                {% if certificacao.texto_autodeclaracao %}
+                <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; border-left: 4px solid #9b59b6;">
+                    <p style="margin: 0; line-height: 1.6; color: #2c3e50; white-space: pre-wrap;">{{ certificacao.texto_autodeclaracao }}</p>
+                </div>
+                {% else %}
+                <p style="color: #7f8c8d; font-style: italic;">Nenhum texto de autodeclaração fornecido.</p>
+                {% endif %}
+            </div>
+
+            <!-- Card: Documentos -->
+            <div style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 1.5rem;">
+                <h2 style="color: #2c3e50; border-bottom: 2px solid #9b59b6; padding-bottom: 0.5rem; margin-bottom: 1rem;">
+                    &#128206; Documentos Anexados
+                </h2>
+                
+                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    {% if certificacao.documento %}
+                    <a href="{{ certificacao.documento.url }}" target="_blank" style="display: flex; align-items: center; padding: 0.75rem; background: #f8f9fa; border-radius: 8px; text-decoration: none; color: #2c3e50; border: 1px solid #e0e0e0; transition: background 0.3s;">
+                        <span style="margin-right: 0.5rem;">&#128196;</span>
+                        <span>Documento Principal</span>
+                        <span style="margin-left: auto; color: #3498db; font-weight: 600;">↗ Abrir</span>
+                    </a>
+                    {% endif %}
+                    
+                    {% if certificacao.documento_2 %}
+                    <a href="{{ certificacao.documento_2.url }}" target="_blank" style="display: flex; align-items: center; padding: 0.75rem; background: #f8f9fa; border-radius: 8px; text-decoration: none; color: #2c3e50; border: 1px solid #e0e0e0; transition: background 0.3s;">
+                        <span style="margin-right: 0.5rem;">&#128196;</span>
+                        <span>Documento Adicional 1</span>
+                        <span style="margin-left: auto; color: #3498db; font-weight: 600;">↗ Abrir</span>
+                    </a>
+                    {% endif %}
+                    
+                    {% if certificacao.documento_3 %}
+                    <a href="{{ certificacao.documento_3.url }}" target="_blank" style="display: flex; align-items: center; padding: 0.75rem; background: #f8f9fa; border-radius: 8px; text-decoration: none; color: #2c3e50; border: 1px solid #e0e0e0; transition: background 0.3s;">
+                        <span style="margin-right: 0.5rem;">&#128196;</span>
+                        <span>Documento Adicional 2</span>
+                        <span style="margin-left: auto; color: #3498db; font-weight: 600;">↗ Abrir</span>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Coluna Direita: Informações do Produtor e Ações -->
+        <div>
+            <!-- Card: Informações do Produtor -->
+            <div style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 1.5rem;">
+                <h2 style="color: #2c3e50; border-bottom: 2px solid #9b59b6; padding-bottom: 0.5rem; margin-bottom: 1rem;">
+                    &#128100; Produtor
+                </h2>
+                
+                <div style="margin-bottom: 1rem;">
+                    <strong style="color: #7f8c8d; display: block; margin-bottom: 0.25rem;">Nome:</strong>
+                    <p style="margin: 0; color: #2c3e50; font-size: 1.1rem;">{{ produtor.nome }}</p>
+                </div>
+                
+                <div style="margin-bottom: 1rem;">
+                    <strong style="color: #7f8c8d; display: block; margin-bottom: 0.25rem;">Email:</strong>
+                    <p style="margin: 0; color: #2c3e50;">{{ produtor.email }}</p>
+                </div>
+                
+                {% if produtor.telefone %}
+                <div style="margin-bottom: 1rem;">
+                    <strong style="color: #7f8c8d; display: block; margin-bottom: 0.25rem;">Telefone:</strong>
+                    <p style="margin: 0; color: #2c3e50;">{{ produtor.telefone }}</p>
+                </div>
+                {% endif %}
+                
+                {% if produtor.endereco %}
+                <div>
+                    <strong style="color: #7f8c8d; display: block; margin-bottom: 0.25rem;">Endereço:</strong>
+                    <p style="margin: 0; color: #2c3e50;">{{ produtor.endereco }}</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Card: Informações da Certificação -->
+            <div style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 1.5rem;">
+                <h2 style="color: #2c3e50; border-bottom: 2px solid #9b59b6; padding-bottom: 0.5rem; margin-bottom: 1rem;">
+                    &#128197; Informa&ccedil;&otilde;es Temporais
+                </h2>
+                
+                <div style="margin-bottom: 1rem;">
+                    <strong style="color: #7f8c8d; display: block; margin-bottom: 0.25rem;">Data de Envio:</strong>
+                    <p style="margin: 0; color: #2c3e50;">{{ certificacao.data_envio|date:"d/m/Y" }}</p>
+                </div>
+                
+                {% if certificacao.data_resposta %}
+                <div style="margin-bottom: 1rem;">
+                    <strong style="color: #7f8c8d; display: block; margin-bottom: 0.25rem;">Data de Resposta:</strong>
+                    <p style="margin: 0; color: #2c3e50;">{{ certificacao.data_resposta|date:"d/m/Y" }}</p>
+                </div>
+                {% endif %}
+                
+                {% if certificacao.admin_responsavel %}
+                <div>
+                    <strong style="color: #7f8c8d; display: block; margin-bottom: 0.25rem;">Auditor Responsável:</strong>
+                    <p style="margin: 0; color: #2c3e50;">{{ certificacao.admin_responsavel.nome }}</p>
+                </div>
+                {% endif %}
+
+                {% if certificacao.observacoes_admin %}
+                <div style="margin-top: 1rem; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
+                    <strong style="color: #7f8c8d; display: block; margin-bottom: 0.5rem;">Observações do Auditor:</strong>
+                    <p style="margin: 0; color: #2c3e50;">{{ certificacao.observacoes_admin }}</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Card: Ações (apenas se pendente) -->
+            {% if certificacao.status_certificacao == 'pendente' %}
+            <div style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <h2 style="color: #2c3e50; border-bottom: 2px solid #9b59b6; padding-bottom: 0.5rem; margin-bottom: 1rem;">
+                    ⚡ Ações
+                </h2>
+                
+                <form method="post" action="{% url 'admin_responder_certificacao' certificacao.id_certificacao %}">
+                    {% csrf_token %}
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <button type="submit" name="acao" value="aprovar" style="width: 100%; padding: 0.75rem; border: none; border-radius: 8px; font-weight: 600; background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%); color: white; cursor: pointer; transition: transform 0.2s;">
+                            ✓ Aprovar Certificação
+                        </button>
+                        
+                        <button type="submit" name="acao" value="rejeitar" style="width: 100%; padding: 0.75rem; border: none; border-radius: 8px; font-weight: 600; background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); color: white; cursor: pointer; transition: transform 0.2s;">
+                            ✗ Rejeitar Certificação
+                        </button>
+                    </div>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Botão Voltar -->
+    <div style="margin-top: 2rem; text-align: center;">
+        <a href="{% url 'home_admin' %}" style="display: inline-block; padding: 0.75rem 2rem; border-radius: 8px; text-decoration: none; font-weight: 600; background: #95a5a6; color: white; transition: background 0.3s;">
+            ← Voltar ao Dashboard
+        </a>
+    </div>
+</div>
+
+<style>
+    a[href]:hover {
+        background: #e8e8e8;
+    }
+    
+    button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+</style>
+{% endblock %}

@@ -166,9 +166,17 @@
                         R$ {{ p.preco }}
                     </p>
                     
-                    <button class="btn-detalhes">
-                        Ver Detalhes
-                    </button>
+                    <div style="display: flex; gap: 0.5rem;">
+                        {% if request.session.usuario_id %}
+                        <a href="{% url 'adicionar_ao_carrinho' p.id_produto %}" style="flex: 1; padding: 10px; background-color: var(--amarelo-sol); color: var(--verde-amazonia); border: none; border-radius: 6px; text-align: center; text-decoration: none; font-weight: bold; transition: background 0.2s;">
+                            🛒 Comprar
+                        </a>
+                        {% else %}
+                        <a href="{% url 'login' %}" style="flex: 1; padding: 10px; background-color: var(--amarelo-sol); color: var(--verde-amazonia); border: none; border-radius: 6px; text-align: center; text-decoration: none; font-weight: bold; transition: background 0.2s;">
+                            🛒 Comprar
+                        </a>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
         </div>

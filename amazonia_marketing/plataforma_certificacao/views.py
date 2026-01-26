@@ -1,8 +1,22 @@
 from django.shortcuts import render, redirect
+from django.contrib.auth import get_user_model, login as auth_login, logout as auth_logout
+from django.contrib.auth.decorators import login_required
 # Importamos as classes que criamos no models.py
-from .models import Usuarios, Produtos, Certificacoes
-# Importamos a classe ProdutoForm que criamos no forms.py
-from .forms import ProdutoForm, ProdutoComAutodeclaracaoForm
+from .models import (
+    UsuariosLegado, Produtos, Certificacoes, UsuarioBase, Produtor, Empresa,
+    Carrinho, ItemCarrinho, Pedido, ItemPedido
+)
+# Importamos as classes de formulário
+from .forms import (
+    ProdutoForm, 
+    ProdutoComAutodeclaracaoForm, 
+    CadastroProdutorForm, 
+    CadastroEmpresaForm,
+    ProdutorConfigForm,
+    UsuarioBaseConfigForm,
+    EmpresaConfigForm,
+    CertificacaoMultiplaForm
+)
 # Importamos datetime
 from datetime import datetime
 # Importar modulo de alerta sucesso ou erro
@@ -11,8 +25,17 @@ from django.contrib import messages
 from django.db.models import Count
 # ------
 from django.shortcuts import get_object_or_404
-
-
+from allauth.socialaccount.adapter import get_adapter
+from allauth.socialaccount.helpers import complete_social_login
+# Importar decoradores customizados de segurança
+from .decorators import (
+    user_is_produtor, 
+    user_is_empresa, 
+    user_is_admin,
+    owns_produto,
+    owns_certificacao,
+    get_usuario_session
+)
 
 # --- Função para exibir tela inicial ---
 def home_publica(request):
@@ -30,76 +53,254 @@ def home_publica(request):
         
     return render(request, 'index.html', {'produtos': produtos})
 
-# --- Função para fazer login no sistema ---
+
+# --- Função para fazer login no sistema (ATUALIZADA) ---
 def login_usuarios(request):
+    """
+    Login inteligente com redirecionamento baseado no tipo de usuário.
+    Tratamento case insensitive para email e tipo.
+    """
     msg = None
     if request.method == 'POST':
-        email_form = request.POST.get('email')
-        senha_form = request.POST.get('senha')
+        email_form = request.POST.get('email', '').strip().lower()  # Case insensitive
+        senha_form = request.POST.get('senha', '')
+
+        # Sempre encerra sessão anterior para evitar usuário "preso"
+        auth_logout(request)
+        request.session.flush()
         
-        # BUSCAR NO BANCO
+        # Tenta primeiro no novo sistema (UsuarioBase)
         try:
-            # Procura o usuário que tentou fazer o login no banco de dados
-            usuario = Usuarios.objects.get(email=email_form, senha=senha_form)
+            usuario = UsuarioBase.objects.get(email__iexact=email_form)
             
-            # Usuário existe: salva os dados da sessão 
+            # Verifica senha hashada usando o método check_password
+            if usuario.check_password(senha_form):
+                # Salva dados na sessão customizada
+                request.session['usuario_id'] = usuario.id_usuario
+                request.session['usuario_tipo'] = usuario.tipo.lower()  # Case insensitive
+                request.session['usuario_nome'] = usuario.nome
+
+                # Garante usuário Django para funcionar com login_required
+                UserModel = get_user_model()
+                django_user = usuario.user
+                if not django_user:
+                    django_user = UserModel.objects.filter(username=email_form).first()
+                if not django_user:
+                    django_user = UserModel(username=email_form, email=usuario.email)
+                django_user.set_password(senha_form)
+                django_user.save()
+                if usuario.user_id != django_user.id:
+                    usuario.user = django_user
+                    usuario.save(update_fields=['user'])
+
+                # Autentica na stack padrão do Django (para login_required)
+                auth_login(request, django_user, backend='django.contrib.auth.backends.ModelBackend')
+                
+                # Redirecionamento inteligente baseado no tipo
+                tipo_normalizado = usuario.tipo.lower()  # Tratamento case insensitive
+                
+                if tipo_normalizado == 'produtor':
+                    return redirect('home_produtor')
+                elif tipo_normalizado == 'empresa':
+                    return redirect('home_empresa')
+                elif tipo_normalizado == 'admin':
+                    return redirect('home_admin')
+                else:
+                    return redirect('home_padrao')
+            else:
+                msg = 'Usuário ou senha inválidos. Tente novamente'
+        
+        except UsuarioBase.DoesNotExist:
+            # Fallback: tenta no sistema legado
+            try:
+                usuario = UsuariosLegado.objects.get(email__iexact=email_form, senha=senha_form)
+                
+                # Seta sessão customizada
+                request.session['usuario_id'] = usuario.id_usuario
+                request.session['usuario_tipo'] = usuario.tipo.lower()
+                request.session['usuario_nome'] = usuario.nome
+
+                # Cria/associa usuário Django para login_required
+                UserModel = get_user_model()
+                django_user = UserModel.objects.filter(username=email_form).first()
+                if not django_user:
+                    django_user = UserModel(username=email_form, email=usuario.email)
+                django_user.set_password(senha_form)
+                django_user.save()
+                auth_login(request, django_user, backend='django.contrib.auth.backends.ModelBackend')
+                
+                tipo_normalizado = usuario.tipo.lower()
+                
+                if tipo_normalizado == 'produtor':
+                    return redirect('home_produtor')
+                elif tipo_normalizado == 'empresa':
+                    return redirect('home_empresa')
+                elif tipo_normalizado == 'admin':
+                    return redirect('home_admin')
+                else:
+                    return redirect('home_padrao')
+                    
+            except UsuariosLegado.DoesNotExist:
+                msg = 'Usuário ou senha inválidos. Tente novamente'
+    
+    return render(request, 'registration/login.html', {'msg': msg})
+
+
+# --- View para escolher tipo de cadastro ---
+def escolher_tipo_cadastro(request):
+    """Tela inicial de cadastro onde o usuário escolhe: Produtor ou Empresa"""
+    return render(request, 'registration/escolher_tipo.html')
+
+
+def escolher_tipo_apos_google(request):
+    """
+    Permite que usuário escolha tipo (Produtor/Empresa) após login com Google.
+    Esta view é chamada quando um novo usuário faz login via Google OAuth.
+    """
+    adapter = get_adapter(request)
+    sociallogin = adapter.unstash_sociallogin(request)
+
+    # Se não houver sociallogin em sessão, fluxo expirou
+    if sociallogin is None and 'google_data' not in request.session:
+        messages.warning(request, 'Sessão expirada. Por favor, faça login novamente.')
+        return redirect('login')
+
+    # Dados para mostrar na tela
+    google_data = request.session.get('google_data', {})
+    if sociallogin:
+        extra = sociallogin.account.extra_data
+        google_data = {
+            'nome': extra.get('name', google_data.get('nome', 'Usuário')),
+            'email': extra.get('email', google_data.get('email', '')),
+            'picture': extra.get('picture', google_data.get('picture', '')),
+        }
+
+    if request.method == 'POST':
+        tipo = request.POST.get('tipo')
+        if tipo in ['produtor', 'empresa']:
+            request.session['tipo_usuario_social'] = tipo
+
+            # Se temos o sociallogin armazenado, completamos o login
+            if sociallogin:
+                response = complete_social_login(request, sociallogin)
+                adapter.clear_stashed_sociallogin(request)
+                return response
+            messages.warning(request, 'Sessão expirada. Por favor, tente novamente.')
+            return redirect('login')
+        messages.error(request, 'Tipo de usuário inválido.')
+
+    return render(request, 'registration/escolher_tipo_google.html', {
+        'nome': google_data.get('nome', 'Usuário'),
+        'email': google_data.get('email', ''),
+        'picture': google_data.get('picture', '')
+    })
+
+
+# --- View para cadastro de Produtor ---
+def cadastro_produtor(request):
+    """Cadastro específico para produtores"""
+    if request.method == 'POST':
+        form = CadastroProdutorForm(request.POST)
+        if form.is_valid():
+            usuario = form.save()
+            
+            # Garante que o usuário Django foi criado e autenticado
+            UserModel = get_user_model()
+            django_user = usuario.user
+            if not django_user:
+                django_user = UserModel.objects.filter(username=usuario.email).first()
+            if django_user:
+                # Autentica no Django
+                auth_login(request, django_user, backend='django.contrib.auth.backends.ModelBackend')
+            
+            # Salva dados na sessão customizada
             request.session['usuario_id'] = usuario.id_usuario
-            request.session['usuario_tipo'] = usuario.tipo
+            request.session['usuario_tipo'] = 'produtor'
             request.session['usuario_nome'] = usuario.nome
             
-            # Lógica para redicionar o usuário de acordo com o seu tipo
-            if usuario.tipo == 'produtor':
-                return redirect('home_produtor')
-            elif usuario.tipo == 'empresa':
-                return redirect('home_empresa')
-            elif usuario.tipo == 'admin':
-                return redirect('home_admin')
-            else:
-                return redirect('home_padrao')
-            
-        # Caso não encontre ninguém com o email ou senha inseridos    
-        except Usuarios.DoesNotExist:
-            msg = 'Usuário ou senha inválidos. Tente novamente'
+            messages.success(request, f'Bem-vindo, {usuario.nome}! Cadastro realizado com sucesso.')
+            return redirect('home_produtor')
+    else:
+        form = CadastroProdutorForm()
     
-    return render(request, 'registration/login.html', {'msg': msg })
+    return render(request, 'registration/cadastro_produtor.html', {'form': form})
+
+
+# --- View para cadastro de Empresa ---
+def cadastro_empresa(request):
+    """Cadastro específico para empresas"""
+    if request.method == 'POST':
+        form = CadastroEmpresaForm(request.POST)
+        if form.is_valid():
+            usuario = form.save()
+            
+            # Garante que o usuário Django foi criado e autenticado
+            UserModel = get_user_model()
+            django_user = usuario.user
+            if not django_user:
+                django_user = UserModel.objects.filter(username=usuario.email).first()
+            if django_user:
+                # Autentica no Django
+                auth_login(request, django_user, backend='django.contrib.auth.backends.ModelBackend')
+            
+            # Salva dados na sessão customizada
+            request.session['usuario_id'] = usuario.id_usuario
+            request.session['usuario_tipo'] = 'empresa'
+            request.session['usuario_nome'] = usuario.nome
+            
+            messages.success(request, f'Bem-vindo, {usuario.nome}! Cadastro realizado com sucesso.')
+            return redirect('home_empresa')
+    else:
+        form = CadastroEmpresaForm()
+    
+    return render(request, 'registration/cadastro_empresa.html', {'form': form})
+
 
 # --- Função de Segurança (Decorador) ---
-# Se alguém tentar acessar direto pela URL sem logar, essa função chuta de volta.
+# Aplicar @login_required e validação de grupo em views protegidas
 def verificar_autenticacao(view_func):
+    """
+    Decorador LEGADO mantido por compatibilidade.
+    Novo código deve usar @login_required + @user_is_produtor/@user_is_empresa/@user_is_admin
+    """
     def wrapper(request, *args, **kwargs):
         if 'usuario_id' not in request.session:
-            return redirect('login') # Chuta para o login
+            return redirect('login')
         return view_func(request, *args, **kwargs)
     return wrapper
 
 # --- As Telas Protegidas ---
 
 # --- DASHBOARD DO PRODUTOR ---
-@verificar_autenticacao
+@login_required(login_url='login')
+@user_is_produtor
 def home_produtor(request):
-    # Segurança extra: Garante que só PRODUTOR entra aqui
-    if request.session.get('usuario_tipo') != 'produtor':
-         return redirect('login')
-    
+    """
+    Dashboard do produtor com seus produtos e certificações.
+    PROTEÇÃO: @login_required + @user_is_produtor garante acesso apenas a produtores autenticados.
+    IDOR Prevention: Filtra produtos apenas do usuário logado.
+    """
     # Identifica quem é o produtor logado
-    usuario_id = request.session.get('usuario_id')
-    # Filtra produtos que o dono é o usuário logado
-    produtos = Produtos.objects.filter(usuario_id=usuario_id)
+    usuario = get_usuario_session(request)
+    if not usuario:
+        return redirect('login')
     
-    # CÁLCULO DE ALGUMAS MÉTRICAS PARA EXIBIR NO PERFIL DO PRODUTOR (FEEDBACK)
-    # -- Quantos produtos ele cadastrados -- 
+    # PROTEÇÃO CONTRA IDOR: Filtra APENAS produtos do usuário logado
+    produtos = Produtos.objects.filter(usuario=usuario)
+    
+    # CÁLCULO DE MÉTRICAS
     total_produtos = produtos.count()
     
-    # -- Quantas certificações ele tem pendente --
+    # Certificações pendentes do usuário
     pendentes = Certificacoes.objects.filter(
-        produto__usuario_id = usuario_id,
-        status_certificacao = 'pendente',
+        produto__usuario=usuario,
+        status_certificacao='pendente',
     ).count()
     
-    # -- Quantas certificacoes ele tem aprovadas --
+    # Certificações aprovadas do usuário
     aprovados = Certificacoes.objects.filter(
-        produto__usuario_id = usuario_id,
-        status_certificacao = 'aprovado',
+        produto__usuario=usuario,
+        status_certificacao='aprovado',
     ).count()
     
     # Lógica para entregar produtos cadastros para o frontend (HTML)
@@ -115,37 +316,43 @@ def home_produtor(request):
     return render(request, 'home_produtor.html', contexto)
 
 # --- ENVIO DE DOCUMENTO PELO PRODUTOR (AUTODECLARAÇÃO) ---
-@verificar_autenticacao
+@login_required(login_url='login')
+@user_is_produtor
 def enviar_autodeclaracao(request):
-    # Segurança de perfil, garante que só o produtor faça o envio
-    if request.session.get('usuario_tipo') != 'produtor':
-        return redirect('home_padrao')
-    # Identificando o usuário logado
-    usuario_id = request.session.get('usuario_id')
-    # Processando o formulário (POST)
+    """
+    Envio de autodeclaração para certificação.
+    PROTEÇÃO: @login_required + @user_is_produtor garante acesso apenas a produtores autenticados.
+    IDOR Prevention: Filtra produtos apenas do usuário logado.
+    """
+    usuario = get_usuario_session(request)
+    if not usuario:
+        return redirect('login')
+    
+    # PROTEÇÃO CONTRA IDOR: Filtra APENAS produtos do produtor logado
     if request.method == 'POST':
         form = ProdutoComAutodeclaracaoForm(request.POST, request.FILES)
-        form.fields['produto'].queryset = Produtos.objects.filter(usuario_id=usuario_id)
+        form.fields['produto'].queryset = Produtos.objects.filter(usuario=usuario)
         
         if form.is_valid():
             # Extrair os dados do formulário
             produto_selecionado = form.cleaned_data['produto']
+            
+            # Validação extra: Garantir que o produto pertence ao usuário
+            if produto_selecionado.usuario != usuario:
+                messages.error(request, 'Acesso negado. Este produto não pertence a você.')
+                return redirect('home_produtor')
+            
             texto = form.cleaned_data['texto_autodeclaracao']
             arquivo = form.cleaned_data['arquivo_autodeclaracao']
             
-            # 5. Regra de Negócio: Criação da Certificação
+            # Regra de Negócio: Criação da Certificação
             nova_certificacao = Certificacoes(
-                # Extraindo os dados do formulário
-                produto = produto_selecionado,
-                texto_autodeclaracao = texto,
-                # Se tiver arquivo, salva o arquivo. Se não, salva None.
-                documento = arquivo,
-                # Implementado a lógica de negócio: status nasce como pendente até um admin aprovar
-                status_certificacao = 'pendente',
-                data_envio = datetime.now().date(),
-                
-                # Admin responsável começa vazio (ninguém aprovou ainda)
-                admin_responsavel = None,
+                produto=produto_selecionado,
+                texto_autodeclaracao=texto,
+                documento=arquivo,
+                status_certificacao='pendente',
+                data_envio=datetime.now().date(),
+                admin_responsavel=None,
             )
             
             nova_certificacao.save()
@@ -156,7 +363,7 @@ def enviar_autodeclaracao(request):
         # Considera que é um GET: exibe a tela inicial
         form = ProdutoComAutodeclaracaoForm()
         # Aqui mostramos apenas os produtos que o usuario logado é dono
-        form.fields['produto'].queryset = Produtos.objects.filter(usuario_id=usuario_id)
+        form.fields['produto'].queryset = Produtos.objects.filter(usuario=usuario)
         
     contexto = {
         'form': form,
@@ -167,83 +374,127 @@ def enviar_autodeclaracao(request):
 
 # ---  Função para o produtor adicionar produtos ---
 @verificar_autenticacao
+@login_required(login_url='login')
+@user_is_produtor
 def cadastro_produto(request):
-    # Adiciona nova camada de segurança para garantir que apenas usuários do tipo 'produtor' possam cadastrar produto
-    if request.session.get('usuario_tipo') != 'produtor':
-        return redirect('home_padrao') 
+    """
+    Cadastro de novo produto.
+    PROTEÇÃO: @login_required + @user_is_produtor garante acesso apenas a produtores autenticados.
+    IDOR Prevention: Atribui automaticamente o dono do produto ao usuário logado.
+    """
+    usuario = get_usuario_session(request)
+    if not usuario:
+        return redirect('login')
     
-    # Testa qual é a ação que o usuário está fazendo, se é do tipo POST
     if request.method == 'POST':
-        # Se sim, a variável 'form' irá receber os dados (POST) e arquivos (FILES)
         form = ProdutoForm(request.POST, request.FILES)
-        # Garantindo consistência dos dados
         if form.is_valid():
-            produto = form.save(commit=False) # Cria o objeto na memória, mas não salva no banco ainda.
+            produto = form.save(commit=False)
             
-            # Definindo o dono manualmente através da sessão
-            id_dono = request.session.get('usuario_id')
-            produto.usuario = Usuarios.objects.get(id_usuario=id_dono)
-            
-            # Definindo o status do produto para 'disponível'
+            # PROTEÇÃO CONTRA IDOR: Define automaticamente o dono como usuário logado
+            produto.usuario = usuario
             produto.status_estoque = 'disponivel'
             
-            # Agora salvaremos no banco de dados as alterações e retornamos a home_produtor
             produto.save()
-            
-            # Feedback para o usuário (UX)
-            messages.success(request, f'O produto {produto.nome} foi cadastrado')
-            
+            messages.success(request, f'Produto "{produto.nome}" cadastrado com sucesso!')
             return redirect('home_produtor')
-        
     else:
-            # se for um GET apenas mostra o formulário para o usário
         form = ProdutoForm()
-        
-        # Agora sim o formulário é enviado (renderizado) para o HTML
-    return render(request, 'cadastro_produto.html', {'form': form}) 
-        
-@verificar_autenticacao
-# Função deleta em cascata 
+    
+    return render(request, 'cadastro_produto.html', {'form': form})
+
+
+@login_required(login_url='login')
+@user_is_produtor
 def deletar_produto(request, produto_id):
-    # Garantir que o produto existe para poder fazer algo com ele
-    produto = get_object_or_404(Produtos, id_produto=produto_id)
-    # Segurança para garantir que o usuário logado é o dono do produto cadastrado
-    id_logado = request.session.get('usuario_id')
-    if produto.usuario_id != id_logado:
-        messages.error(request, 'Tentativa de exclusão falha. Você não é o dono do produto!')
-        return redirect('home_prdutor')
-    # Antes de apagar, verifica se tem certificado e deleta também para não ter erro de integridade
+    """
+    Deletar produto (apenas o dono pode deletar).
+    PROTEÇÃO: @login_required + @user_is_produtor
+    IDOR Prevention: Valida que o usuário é o dono do produto.
+    """
+    usuario = get_usuario_session(request)
+    if not usuario:
+        return redirect('login')
+    
+    # PROTEÇÃO CONTRA IDOR: Filtra apenas produtos do usuário logado
+    produto = get_object_or_404(Produtos, id_produto=produto_id, usuario=usuario)
+    
+    # Deletar certificações vinculadas em cascata
     certificacoes_vinculadas = Certificacoes.objects.filter(produto_id=produto_id)
     if certificacoes_vinculadas.exists():
         qtde = certificacoes_vinculadas.count()
         certificacoes_vinculadas.delete()
-        print(f'Sistema: {qtde} certificações deletadas em cascata para o produto {produto_id}')
     
-    # Excluindo o produto (se você for o dono dele)
+    # Excluir produto
     nome_produto = produto.nome 
     produto.delete()
-    # Feedback para o usuário
-    messages.success(request, f'Produto: {nome_produto} removido!')   
+    messages.success(request, f'Produto "{nome_produto}" removido com sucesso!')
     return redirect('home_produtor')
-    
-@verificar_autenticacao
-def home_empresa(request):
-    # Segurança extra: Garante que só EMPRESA entra aqui
-    if request.session.get('usuario_tipo') != 'empresa':
-         return redirect('login')
-        # Renderiza a tela passando o nome do usuário para o HTML
-    return render(request, 'home_empresa.html')
 
-# -- DASHBOARD DO ADMINISTRADOR ---
-@verificar_autenticacao
-def home_admin(request):
-    # Segurança extra: Garante que só ADMIN entra aqui
-    if request.session.get('usuario_tipo') != 'admin':
-        messages.error(request, 'Acesso restrito a administradores!')
+
+@login_required(login_url='login')
+@user_is_empresa
+def home_empresa(request):
+    """
+    Dashboard da empresa com foco em dados jurídicos e status de certificações.
+    Mostra resumo de produtos, selos e verificação cadastral.
+    """
+    usuario = get_usuario_session(request)
+    if not usuario:
         return redirect('login')
-    
-    # Métricas para exibir no dashboard 
-    # Contamos quantos pedidos existem em cada fila 
+
+    # Perfil de empresa (dados jurídicos) - cria automaticamente se não existir
+    try:
+        empresa_profile = usuario.empresa_profile
+    except Empresa.DoesNotExist:
+        # Se o perfil não existe, tenta criar um vazio
+        try:
+            empresa_profile = Empresa.objects.create(usuario=usuario)
+        except Exception as e:
+            messages.error(request, f'Erro ao criar perfil de empresa: {str(e)}')
+            return redirect('login')
+
+    # Métricas de produtos e certificações
+    produtos = Produtos.objects.filter(usuario=usuario)
+    certificacoes = Certificacoes.objects.filter(produto__usuario=usuario)
+    pendentes = certificacoes.filter(status_certificacao='pendente').count()
+    aprovados = certificacoes.filter(status_certificacao='aprovado').count()
+    reprovados = certificacoes.filter(status_certificacao='reprovado').count()
+
+    # Documentação faltante (para evitar perfis falsos)
+    docs_faltando = []
+    if not empresa_profile.documento_contrato_social:
+        docs_faltando.append('Contrato Social/Estatuto')
+    if not empresa_profile.documento_cnpj:
+        docs_faltando.append('Comprovante de CNPJ')
+    if not empresa_profile.documento_alvara:
+        docs_faltando.append('Alvará de Funcionamento')
+
+    # Pedidos recentes (caso a empresa atue como compradora)
+    pedidos_recentes = Pedido.objects.filter(usuario=usuario).order_by('-data_pedido')[:5]
+
+    context = {
+        'usuario_nome': usuario.nome or 'Empresa',
+        'status_verificacao': empresa_profile.status_verificacao,
+        'produtos_total': produtos.count(),
+        'cert_pendentes': pendentes,
+        'cert_aprovados': aprovados,
+        'cert_reprovados': reprovados,
+        'docs_faltando': docs_faltando,
+        'pedidos_recentes': pedidos_recentes,
+        'empresa': empresa_profile,
+    }
+    return render(request, 'home_empresa.html', context)
+
+
+@login_required(login_url='login')
+@user_is_admin
+def home_admin(request):
+    """
+    Dashboard do administrador/auditor.
+    PROTEÇÃO: @login_required + @user_is_admin garante acesso apenas a auditores.
+    """
+    # Métricas para exibir no dashboard
     pendente = Certificacoes.objects.filter(status_certificacao='pendente').count()
     aprovado = Certificacoes.objects.filter(status_certificacao='aprovado').count()
     reprovado = Certificacoes.objects.filter(status_certificacao='reprovado').count()
@@ -313,13 +564,573 @@ def home_padrao(request):
 
 # --- Função para deslogar o usuário ---
 def logout_view(request):
-    # Limpa a sessão (desloga)
+    # Limpa sessão e autenticação Django
+    auth_logout(request)
     request.session.flush()
     return redirect('login')
+
+
+# ============================================================================
+# VIEWS DE CONFIGURAÇÃO DE PERFIL
+# ============================================================================
+
+@login_required(login_url='login')
+@user_is_produtor
+def config_perfil_produtor(request):
+    """
+    View para configuração de perfil do produtor.
+    Permite editar biografia, foto, contatos e redes sociais.
+    """
+    usuario = get_usuario_session(request)
+    if not usuario:
+        return redirect('login')
+    
+    try:
+        produtor = usuario.produtor_profile
+    except Produtor.DoesNotExist:
+        messages.error(request, 'Perfil de produtor não encontrado.')
+        return redirect('home_produtor')
+    
+    if request.method == 'POST':
+        form_usuario = UsuarioBaseConfigForm(request.POST, instance=usuario)
+        form_produtor = ProdutorConfigForm(request.POST, request.FILES, instance=produtor)
+        
+        if form_usuario.is_valid() and form_produtor.is_valid():
+            form_usuario.save()
+            form_produtor.save()
+            messages.success(request, 'Perfil atualizado com sucesso!')
+            return redirect('config_perfil_produtor')
+    else:
+        form_usuario = UsuarioBaseConfigForm(instance=usuario)
+        form_produtor = ProdutorConfigForm(instance=produtor)
+    
+    context = {
+        'form_usuario': form_usuario,
+        'form_produtor': form_produtor,
+        'usuario': usuario,
+        'produtor': produtor,
+    }
+    return render(request, 'produtor_config_perfil.html', context)
+
+
+@login_required(login_url='login')
+@user_is_empresa
+def config_perfil_empresa(request):
+    """
+    View para configuração de perfil da empresa.
+    Permite editar dados jurídicos, documentação e informações comerciais.
+    Inclui validação rigorosa e integração com API de CNPJ.
+    """
+    usuario = get_usuario_session(request)
+    if not usuario:
+        return redirect('login')
+    
+    try:
+        empresa = usuario.empresa_profile
+    except Empresa.DoesNotExist:
+        messages.error(request, 'Perfil de empresa não encontrado.')
+        return redirect('home_empresa')
+    
+    if request.method == 'POST':
+        form_usuario = UsuarioBaseConfigForm(request.POST, instance=usuario)
+        form_empresa = EmpresaConfigForm(request.POST, request.FILES, instance=empresa)
+        
+        if form_usuario.is_valid() and form_empresa.is_valid():
+            form_usuario.save()
+            empresa_obj = form_empresa.save(commit=False)
+            
+            # Se CNPJ foi alterado e empresa tem documentos, marca como pendente verificação
+            if 'cnpj' in form_empresa.changed_data and empresa.status_verificacao == 'verificado':
+                empresa_obj.status_verificacao = 'pendente'
+                messages.info(request, 'CNPJ alterado. Sua empresa será reverificada.')
+            
+            empresa_obj.save()
+            messages.success(request, 'Perfil atualizado com sucesso!')
+            return redirect('config_perfil_empresa')
+    else:
+        form_usuario = UsuarioBaseConfigForm(instance=usuario)
+        form_empresa = EmpresaConfigForm(instance=empresa)
+    
+    context = {
+        'form_usuario': form_usuario,
+        'form_empresa': form_empresa,
+        'usuario': usuario,
+        'empresa': empresa,
+    }
+    return render(request, 'empresa_config_perfil.html', context)
+
+
+# ============================================================================
+# VIEWS DE DETALHAMENTO PARA ADMIN (AUDITOR)
+# ============================================================================
+
+@login_required(login_url='login')
+@user_is_admin
+def detalhe_certificacao(request, certificacao_id):
+    """
+    DetailView para certificação específica.
+    Mostra todas as informações detalhadas para análise do auditor.
+    """
+    certificacao = get_object_or_404(Certificacoes, id_certificacao=certificacao_id)
+    
+    # Informações do produto e produtor
+    produto = certificacao.produto
+    produtor = produto.usuario
+    
+    context = {
+        'certificacao': certificacao,
+        'produto': produto,
+        'produtor': produtor,
+    }
+    return render(request, 'admin_detalhe_certificacao.html', context)
+
+
+@login_required(login_url='login')
+@user_is_admin
+def lista_certificacoes_aprovadas(request):
+    """
+    Lista detalhada de todas as certificações aprovadas.
+    """
+    certificacoes = Certificacoes.objects.filter(
+        status_certificacao='aprovado'
+    ).select_related('produto', 'produto__usuario', 'admin_responsavel').order_by('-data_resposta')
+    
+    context = {
+        'certificacoes': certificacoes,
+        'titulo': 'Selos Emitidos',
+        'status_filtro': 'aprovado'
+    }
+    return render(request, 'admin_lista_certificacoes.html', context)
+
+
+@login_required(login_url='login')
+@user_is_admin
+def lista_certificacoes_reprovadas(request):
+    """
+    Lista detalhada de todas as certificações reprovadas.
+    """
+    certificacoes = Certificacoes.objects.filter(
+        status_certificacao='reprovado'
+    ).select_related('produto', 'produto__usuario', 'admin_responsavel').order_by('-data_resposta')
+    
+    context = {
+        'certificacoes': certificacoes,
+        'titulo': 'Selos Reprovados',
+        'status_filtro': 'reprovado'
+    }
+    return render(request, 'admin_lista_certificacoes.html', context)
+
+
+@login_required(login_url='login')
+@user_is_admin
+def lista_certificacoes_pendentes(request):
+    """
+    Lista detalhada de todas as certificações pendentes (fila de análise).
+    """
+    certificacoes = Certificacoes.objects.filter(
+        status_certificacao='pendente'
+    ).select_related('produto', 'produto__usuario').order_by('data_envio')
+    
+    context = {
+        'certificacoes': certificacoes,
+        'titulo': 'Fila de Análise',
+        'status_filtro': 'pendente'
+    }
+    return render(request, 'admin_lista_certificacoes.html', context)
+
+
+# ============================================================================
+# ATUALIZAÇÃO DA VIEW DE ENVIO DE AUTODECLARAÇÃO (UPLOAD MÚLTIPLO)
+# ============================================================================
+
+@login_required(login_url='login')
+@user_is_produtor
+def enviar_autodeclaracao_multipla(request):
+    """
+    View atualizada para permitir upload de até 3 documentos.
+    Substitui a view antiga enviar_autodeclaracao.
+    """
+    usuario = get_usuario_session(request)
+    if not usuario:
+        return redirect('login')
+    
+    if request.method == 'POST':
+        form = CertificacaoMultiplaForm(request.POST, request.FILES)
+        form.fields['produto'].queryset = Produtos.objects.filter(usuario=usuario)
+        
+        if form.is_valid():
+            produto_selecionado = form.cleaned_data['produto']
+            texto = form.cleaned_data['texto_autodeclaracao']
+            doc1 = form.cleaned_data.get('documento_1')
+            doc2 = form.cleaned_data.get('documento_2')
+            doc3 = form.cleaned_data.get('documento_3')
+            
+            # Cria a certificação
+            certificacao = Certificacoes.objects.create(
+                produto=produto_selecionado,
+                texto_autodeclaracao=texto,
+                documento=doc1,
+                documento_2=doc2,
+                documento_3=doc3,
+                data_envio=datetime.now().date(),
+                status_certificacao='pendente'
+            )
+            
+            messages.success(request, f'Certificação enviada com sucesso para o produto "{produto_selecionado.nome}"!')
+            return redirect('home_produtor')
+    else:
+        form = CertificacaoMultiplaForm()
+        form.fields['produto'].queryset = Produtos.objects.filter(usuario=usuario)
+    
+    context = {
+        'form': form,
+        'usuario': usuario,
+    }
+    return render(request, 'enviar_autodeclaracao_multipla.html', context)
+
+
+# ============================================================================
+# VALIDADOR DE CNPJ COM API PÚBLICA
+# ============================================================================
+
+import requests
+from django.http import JsonResponse
+
+def validar_cnpj_api(request):
+    """
+    API endpoint para validar CNPJ usando API pública (ReceitaWS).
+    Retorna dados da empresa se CNPJ for válido.
+    """
+    cnpj = request.GET.get('cnpj', '')
+    
+    if not cnpj:
+        return JsonResponse({'erro': 'CNPJ não fornecido'}, status=400)
+    
+    # Remove formatação
+    cnpj_numeros = ''.join(filter(str.isdigit, cnpj))
+    
+    if len(cnpj_numeros) != 14:
+        return JsonResponse({'erro': 'CNPJ deve ter 14 dígitos'}, status=400)
+    
+    try:
+        # Consulta API pública da Receita Federal
+        url = f'https://www.receitaws.com.br/v1/cnpj/{cnpj_numeros}'
+        response = requests.get(url, timeout=10)
+        
+        if response.status_code == 200:
+            dados = response.json()
+            
+            if dados.get('status') == 'ERROR':
+                return JsonResponse({
+                    'valido': False,
+                    'erro': dados.get('message', 'CNPJ inválido')
+                }, status=400)
+            
+            return JsonResponse({
+                'valido': True,
+                'razao_social': dados.get('nome', ''),
+                'nome_fantasia': dados.get('fantasia', ''),
+                'cnpj': dados.get('cnpj', ''),
+                'situacao': dados.get('situacao', ''),
+                'logradouro': dados.get('logradouro', ''),
+                'numero': dados.get('numero', ''),
+                'municipio': dados.get('municipio', ''),
+                'uf': dados.get('uf', ''),
+                'cep': dados.get('cep', ''),
+                'telefone': dados.get('telefone', ''),
+            })
+        else:
+            return JsonResponse({
+                'erro': 'Erro ao consultar API da Receita Federal'
+            }, status=500)
+            
+    except requests.RequestException as e:
+        return JsonResponse({
+            'erro': f'Erro de conexão: {str(e)}'
+        }, status=500)
+
+
+# ============================================================================
+# VIEWS DE CARRINHO E CHECKOUT
+# ============================================================================
+
+@login_required(login_url='login')
+def ver_carrinho(request):
+    """View para visualizar o carrinho de compras"""
+    usuario = get_usuario_session(request)
+    if not usuario:
+        return redirect('login')
+    
+    carrinho, created = Carrinho.objects.get_or_create(usuario=usuario, ativo=True)
+    itens = carrinho.itens.all().select_related('produto')
+    total = carrinho.get_total()
+    quantidade_itens = carrinho.get_quantidade_itens()
+    
+    context = {
+        'carrinho': carrinho,
+        'itens': itens,
+        'total': total,
+        'quantidade_itens': quantidade_itens,
+    }
+    
+    return render(request, 'carrinho.html', context)
+
+
+@login_required(login_url='login')
+def adicionar_ao_carrinho(request, produto_id):
+    """View para adicionar produto ao carrinho"""
+    usuario = get_usuario_session(request)
+    if not usuario:
+        return redirect('login')
+    
+    produto = get_object_or_404(Produtos, id_produto=produto_id)
+    
+    if produto.status_estoque != 'disponivel':
+        messages.error(request, 'Este produto não está disponível no momento.')
+        return redirect('home_publica')
+    
+    carrinho, created = Carrinho.objects.get_or_create(usuario=usuario, ativo=True)
+    
+    item, created = ItemCarrinho.objects.get_or_create(
+        carrinho=carrinho,
+        produto=produto,
+        defaults={'preco_unitario': produto.preco, 'quantidade': 1}
+    )
+    
+    if not created:
+        item.quantidade += 1
+        item.save()
+        messages.success(request, f'Quantidade de {produto.nome} atualizada no carrinho!')
+    else:
+        messages.success(request, f'{produto.nome} adicionado ao carrinho!')
+    
+    return redirect('ver_carrinho')
+
+
+@login_required(login_url='login')
+def remover_do_carrinho(request, item_id):
+    """View para remover item do carrinho"""
+    usuario = get_usuario_session(request)
+    if not usuario:
+        return redirect('login')
+    
+    item = get_object_or_404(ItemCarrinho, pk=item_id, carrinho__usuario=usuario)
+    produto_nome = item.produto.nome
+    item.delete()
+    
+    messages.success(request, f'{produto_nome} removido do carrinho!')
+    return redirect('ver_carrinho')
+
+
+@login_required(login_url='login')
+def atualizar_quantidade_carrinho(request, item_id):
+    """View para atualizar quantidade de um item no carrinho"""
+    if request.method == 'POST':
+        usuario = get_usuario_session(request)
+        if not usuario:
+            return redirect('login')
+        
+        item = get_object_or_404(ItemCarrinho, pk=item_id, carrinho__usuario=usuario)
+        nova_quantidade = int(request.POST.get('quantidade', 1))
+        
+        if nova_quantidade > 0:
+            item.quantidade = nova_quantidade
+            item.save()
+            messages.success(request, 'Quantidade atualizada!')
+        else:
+            item.delete()
+            messages.success(request, 'Item removido do carrinho!')
+    
+    return redirect('ver_carrinho')
+
+
+@login_required(login_url='login')
+def checkout(request):
+    """View para página de checkout"""
+    usuario = get_usuario_session(request)
+    if not usuario:
+        return redirect('login')
+    
+    carrinho = get_object_or_404(Carrinho, usuario=usuario, ativo=True)
+    itens = carrinho.itens.all().select_related('produto')
+    
+    if not itens:
+        messages.warning(request, 'Seu carrinho está vazio!')
+        return redirect('home_publica')
+    
+    total = carrinho.get_total()
+    
+    if request.method == 'POST':
+        # Criar pedido
+        pedido = Pedido.objects.create(
+            usuario=usuario,
+            total=total,
+            endereco_entrega=request.POST.get('endereco'),
+            cidade_entrega=request.POST.get('cidade'),
+            estado_entrega=request.POST.get('estado'),
+            cep_entrega=request.POST.get('cep'),
+            telefone_contato=request.POST.get('telefone'),
+            metodo_pagamento=request.POST.get('metodo_pagamento'),
+            observacoes=request.POST.get('observacoes', '')
+        )
+        
+        # Criar itens do pedido
+        for item in itens:
+            ItemPedido.objects.create(
+                pedido=pedido,
+                produto=item.produto,
+                quantidade=item.quantidade,
+                preco_unitario=item.preco_unitario,
+                subtotal=item.get_subtotal()
+            )
+        
+        # Limpar carrinho
+        carrinho.ativo = False
+        carrinho.save()
+        
+        messages.success(request, f'Pedido #{pedido.pk} realizado com sucesso!')
+        return redirect('detalhes_pedido', pedido_id=pedido.pk)
+    
+    context = {
+        'carrinho': carrinho,
+        'itens': itens,
+        'total': total,
+        'usuario': usuario,
+    }
+    
+    return render(request, 'checkout.html', context)
+
+
+@login_required(login_url='login')
+def meus_pedidos(request):
+    """View para listar pedidos do usuário"""
+    usuario = get_usuario_session(request)
+    if not usuario:
+        return redirect('login')
+    
+    pedidos = Pedido.objects.filter(usuario=usuario).prefetch_related('itens__produto')
+    
+    context = {
+        'pedidos': pedidos,
+    }
+    
+    return render(request, 'meus_pedidos.html', context)
+
+
+@login_required(login_url='login')
+def detalhes_pedido(request, pedido_id):
+    """View para ver detalhes de um pedido específico"""
+    usuario = get_usuario_session(request)
+    if not usuario:
+        return redirect('login')
+    
+    pedido = get_object_or_404(Pedido, pk=pedido_id, usuario=usuario)
+    itens = pedido.itens.all().select_related('produto')
+    
+    context = {
+        'pedido': pedido,
+        'itens': itens,
+    }
+    
+    return render(request, 'detalhes_pedido.html', context)
+
+
+# ============================================================================
+# VIEWS DE MARKETPLACE EXTERNO
+# ============================================================================
+
+@login_required(login_url='login')
+@user_is_produtor
+def gerar_anuncio_marketplace(request, produto_id):
+    """View para gerar anúncio para marketplace externo"""
+    usuario = get_usuario_session(request)
+    if not usuario:
+        return redirect('login')
+    
+    produto = get_object_or_404(Produtos, id_produto=produto_id, usuario=usuario)
+    
+    if request.method == 'POST':
+        plataforma = request.POST.get('plataforma')
+        
+        # Verificar se produto tem certificação aprovada
+        tem_certificacao = Certificacoes.objects.filter(
+            produto=produto,
+            status_certificacao='aprovado'
+        ).exists()
+        
+        # Gerar conteúdo do anúncio
+        conteudo = f"""
+📦 {produto.nome}
+💰 R$ {produto.preco}
+📂 Categoria: {produto.categoria}
+
+📝 Descrição:
+{produto.descricao}
+
+{'✅ PRODUTO CERTIFICADO - Comércio Justo e Sustentável' if tem_certificacao else ''}
+
+🌿 Amazônia Marketing - Produtos Autênticos da Amazônia
+
+#ComercioJusto #Sustentabilidade #ProdutosNaturais #Amazonia
+        """
+        
+        # Salvar anúncio
+        marketplace = Marketplace.objects.create(
+            produto=produto,
+            plataforma=plataforma,
+            conteudo_gerado=conteudo,
+            data_geracao=datetime.now().date()
+        )
+        
+        messages.success(request, f'Anúncio gerado para {plataforma}!')
+        return redirect('visualizar_anuncio', anuncio_id=marketplace.id_anuncio)
+    
+    context = {
+        'produto': produto,
+    }
+    
+    return render(request, 'gerar_anuncio.html', context)
+
+
+@login_required(login_url='login')
+@user_is_produtor
+def visualizar_anuncio(request, anuncio_id):
+    """View para visualizar anúncio gerado"""
+    usuario = get_usuario_session(request)
+    if not usuario:
+        return redirect('login')
+    
+    anuncio = get_object_or_404(Marketplace, id_anuncio=anuncio_id, produto__usuario=usuario)
+    
+    context = {
+        'anuncio': anuncio,
+    }
+    
+    return render(request, 'visualizar_anuncio.html', context)
+
+
+@login_required(login_url='login')
+@user_is_produtor
+def meus_anuncios(request):
+    """View para listar todos os anúncios do produtor"""
+    usuario = get_usuario_session(request)
+    if not usuario:
+        return redirect('login')
+    
+    anuncios = Marketplace.objects.filter(produto__usuario=usuario).select_related('produto').order_by('-data_geracao')
+    
+    context = {
+        'anuncios': anuncios,
+    }
+    
+    return render(request, 'meus_anuncios.html', context)
+
+
+# --- Função para deslogar o usuário --- (mantida por compatibilidade)
+# Movida para cima no código
   
 # --- Função para cadastrar novo usuário ---
 
 # ---  Função para adicionar certificação ao produto ---
 
 # ---  Função para empresa comprar produtos de produtor ---
-

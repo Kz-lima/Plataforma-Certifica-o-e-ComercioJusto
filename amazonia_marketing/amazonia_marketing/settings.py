@@ -38,7 +38,12 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sites',  # Necessário para django-allauth
     'plataforma_certificacao',
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',
 ]
 
 MIDDLEWARE = [
@@ -49,6 +54,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'allauth.account.middleware.AccountMiddleware',  # Middleware do allauth
 ]
 
 ROOT_URLCONF = 'amazonia_marketing.urls'
@@ -77,12 +83,16 @@ WSGI_APPLICATION = 'amazonia_marketing.wsgi.application'
 #Iniciando ligação do django com o banco de dados 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',  # FORÇAR A USAR MYSQL
+        'ENGINE': 'django.db.backends.mysql',  # Engine padrão do Django para MySQL
         'NAME': 'amazonia_marketing',          # Nome exato do banco que criamos
         'USER': 'root',                        # Seu usuário do MySQL
-        'PASSWORD': 'admin',                   # Senha
+        'PASSWORD': 'user2006',                # Senha
         'HOST': '127.0.0.1',                   # Localhost
         'PORT': '3306',                        # Porta padrão
+        'OPTIONS': {
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+            'charset': 'utf8mb4',
+        },
     }
 }
 
@@ -139,3 +149,50 @@ ALLOWED_UPLOAD_MIME_TYPES = [
     'image/jpeg', # .jpg e jpeg
     'image/png', # .png   
 ]
+
+# ============================================
+# Configurações do django-allauth
+# ============================================
+
+# ID do site (necessário para allauth)
+SITE_ID = 1
+
+# Backends de autenticação
+AUTHENTICATION_BACKENDS = [
+    # Backend padrão do Django
+    'django.contrib.auth.backends.ModelBackend',
+    
+    # Backend do allauth para social login
+    'allauth.account.auth_backends.AuthenticationBackend',
+]
+
+# Configurações de autenticação
+LOGIN_REDIRECT_URL = '/'  # Para onde redirecionar após login
+ACCOUNT_LOGOUT_REDIRECT_URL = '/'
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']
+ACCOUNT_LOGIN_METHODS = {'email'}
+ACCOUNT_EMAIL_VERIFICATION = 'optional'  # 'mandatory' para obrigar verificação
+
+# Configurações do provedor Google
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'SCOPE': [
+            'profile',
+            'email',
+        ],
+        'AUTH_PARAMS': {
+            'access_type': 'online',
+            'prompt': 'select_account',  # força o Google a mostrar o seletor de contas
+        },
+        # Nota: As credenciais devem ser configuradas no Django Admin
+        # em Social Applications, não aqui no código
+    }
+}
+
+# Adapter customizado para mapear dados do Google para UsuarioBase
+SOCIALACCOUNT_ADAPTER = 'plataforma_certificacao.adapters.CustomSocialAccountAdapter'
+SOCIALACCOUNT_QUERY_EMAIL = True
+
+# Pular tela de sign in e ir direto para o login com a conta social
+SOCIALACCOUNT_LOGIN_ON_GET = True
+
