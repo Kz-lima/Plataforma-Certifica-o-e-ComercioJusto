@@ -1,266 +1,96 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Configurações da Empresa{% endblock %}
+{% block title %}Configurações da Empresa - Amazônia Marketing{% endblock %}
 
-{% block content %}
-<div class="container" style="max-width: 1400px; margin: 2rem auto; padding: 0 1rem;">
-    
-    <!-- Cabeçalho -->
-    <div style="background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); color: white; padding: 2rem; border-radius: 12px; margin-bottom: 2rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-        <h1 style="margin: 0 0 0.5rem 0; font-size: 2rem;">&#127970; Configura&ccedil;&otilde;es da Empresa</h1>
-        <p style="margin: 0; opacity: 0.9;">Mantenha seus dados atualizados para garantir credibilidade e conformidade</p>
-        
-        <!-- Status de Verificação -->
-        <div style="margin-top: 1rem; padding: 0.75rem 1rem; background: rgba(255,255,255,0.2); border-radius: 8px; display: inline-block;">
-            <strong>Status de Verificação:</strong> 
-            {% if empresa.status_verificacao == 'verificado' %}
-                <span style="color: #2ecc71;">✓ Verificado</span>
-            {% elif empresa.status_verificacao == 'pendente' %}
-                <span style="color: #f39c12;">⏳ Pendente</span>
-            {% else %}
-                <span style="color: #e74c3c;">✗ Rejeitado</span>
-            {% endif %}
-        </div>
-    </div>
-
-    <!-- Mensagens -->
-    {% if messages %}
-        {% for message in messages %}
-        <div class="alert alert-{{ message.tags }}" style="padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
-            {{ message }}
-        </div>
-        {% endfor %}
-    {% endif %}
-
-    <!-- Alerta de Documentação -->
-    {% if not empresa.documento_cnpj or not empresa.documento_contrato_social %}
-    <div style="background: #fff3cd; border: 2px solid #ffc107; color: #856404; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
-        <strong>⚠️ Atenção:</strong> Complete a documentação obrigatória para verificação da empresa.
-    </div>
-    {% endif %}
-
-    <form method="post" enctype="multipart/form-data" style="background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-        {% csrf_token %}
-
-        <!-- Seção: Informações do Responsável -->
-        <div style="margin-bottom: 2rem;">
-            <h2 style="color: #2c3e50; border-bottom: 3px solid #3498db; padding-bottom: 0.5rem; margin-bottom: 1.5rem;">
-                &#128100; Informa&ccedil;&otilde;es do Respons&aacute;vel
-            </h2>
-            
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
-                <div>
-                    <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Nome do Responsável</label>
-                    {{ form_usuario.nome }}
-                </div>
-                <div>
-                    <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Email</label>
-                    {{ form_usuario.email }}
-                </div>
-                <div>
-                    <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Telefone</label>
-                    {{ form_usuario.telefone }}
-                </div>
-            </div>
-        </div>
-
-        <!-- Seção: Dados Jurídicos (CRÍTICO) -->
-        <div style="margin-bottom: 2rem; background: #f8f9fa; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #e74c3c;">
-            <h2 style="color: #2c3e50; padding-bottom: 0.5rem; margin-bottom: 1.5rem;">
-                &#128272; Dados Jur&iacute;dicos (Obrigat&oacute;rios)
-            </h2>
-            
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
-                <div>
-                    <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">CNPJ *</label>
-                    {{ form_empresa.cnpj }}
-                    <small style="display: block; color: #7f8c8d; margin-top: 0.25rem;">
-                        Apenas números ou formato XX.XXX.XXX/XXXX-XX
-                    </small>
-                    <button type="button" onclick="validarCNPJ()" style="margin-top: 0.5rem; padding: 0.5rem 1rem; background: #3498db; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                        &#128269; Validar CNPJ
-                    </button>
-                    <div id="cnpj-resultado" style="margin-top: 0.5rem;"></div>
-                </div>
-
-                <div>
-                    <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Razão Social *</label>
-                    {{ form_empresa.razao_social }}
-                </div>
-
-                <div>
-                    <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Nome Fantasia</label>
-                    {{ form_empresa.nome_fantasia }}
-                </div>
-
-                <div>
-                    <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Inscrição Estadual</label>
-                    {{ form_empresa.inscricao_estadual }}
-                </div>
-            </div>
-        </div>
-
-        <!-- Seção: Documentação Comprobatória -->
-        <div style="margin-bottom: 2rem; background: #fff3cd; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #ffc107;">
-            <h2 style="color: #2c3e50; padding-bottom: 0.5rem; margin-bottom: 1.5rem;">
-                &#128196; Documenta&ccedil;&atilde;o Comprobat&oacute;ria
-            </h2>
-            <p style="color: #856404; margin-bottom: 1rem;">
-                <strong>Importante:</strong> Envie documentos válidos e legíveis em formato PDF.
-            </p>
-            
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 1.5rem;">
-                <div>
-                    <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Contrato Social / Estatuto *</label>
-                    {{ form_empresa.documento_contrato_social }}
-                    {% if empresa.documento_contrato_social %}
-                        <a href="{{ empresa.documento_contrato_social.url }}" target="_blank" style="display: block; color: #3498db; margin-top: 0.5rem;">
-                            ✓ Documento já enviado
-                        </a>
-                    {% endif %}
-                </div>
-
-                <div>
-                    <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Comprovante de CNPJ *</label>
-                    {{ form_empresa.documento_cnpj }}
-                    {% if empresa.documento_cnpj %}
-                        <a href="{{ empresa.documento_cnpj.url }}" target="_blank" style="display: block; color: #3498db; margin-top: 0.5rem;">
-                            ✓ Documento já enviado
-                        </a>
-                    {% endif %}
-                </div>
-
-                <div>
-                    <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Alvará de Funcionamento</label>
-                    {{ form_empresa.documento_alvara }}
-                    {% if empresa.documento_alvara %}
-                        <a href="{{ empresa.documento_alvara.url }}" target="_blank" style="display: block; color: #3498db; margin-top: 0.5rem;">
-                            ✓ Documento já enviado
-                        </a>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-
-        <!-- Seção: Endereço Comercial -->
-        <div style="margin-bottom: 2rem;">
-            <h2 style="color: #2c3e50; border-bottom: 3px solid #3498db; padding-bottom: 0.5rem; margin-bottom: 1.5rem;">
-                &#128205; Endere&ccedil;o Comercial
-            </h2>
-            
-            <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 1.5rem;">
-                <div style="grid-column: span 2;">
-                    <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Endereço</label>
-                    {{ form_empresa.endereco_comercial }}
-                </div>
-                <div>
-                    <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Cidade</label>
-                    {{ form_empresa.cidade }}
-                </div>
-                <div>
-                    <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Estado</label>
-                    {{ form_empresa.estado }}
-                </div>
-                <div>
-                    <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">CEP</label>
-                    {{ form_empresa.cep }}
-                </div>
-            </div>
-        </div>
-
-        <!-- Seção: Contato e Presença Digital -->
-        <div style="margin-bottom: 2rem;">
-            <h2 style="color: #2c3e50; border-bottom: 3px solid #3498db; padding-bottom: 0.5rem; margin-bottom: 1.5rem;">
-                &#128222; Contato e Presen&ccedil;a Digital
-            </h2>
-            
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
-                <div>
-                    <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Telefone Comercial</label>
-                    {{ form_empresa.telefone_comercial }}
-                </div>
-                <div>
-                    <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Site</label>
-                    {{ form_empresa.site }}
-                </div>
-            </div>
-        </div>
-
-        <!-- Seção: Descrição e Logo -->
-        <div style="margin-bottom: 2rem;">
-            <h2 style="color: #2c3e50; border-bottom: 3px solid #3498db; padding-bottom: 0.5rem; margin-bottom: 1.5rem;">
-                &#127912; Identidade da Empresa
-            </h2>
-            
-            <div style="margin-bottom: 1.5rem;">
-                <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Descrição da Empresa</label>
-                {{ form_empresa.descricao_empresa }}
-            </div>
-
-            <div>
-                <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Logo da Empresa</label>
-                {{ form_empresa.logo }}
-                {% if empresa.logo %}
-                    <img src="{{ empresa.logo.url }}" alt="Logo" style="display: block; margin-top: 1rem; max-width: 200px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                {% endif %}
-            </div>
-        </div>
-
-        <!-- Botões -->
-        <div style="display: flex; gap: 1rem; justify-content: flex-end; padding-top: 1.5rem; border-top: 2px solid #ecf0f1;">
-            <a href="{% url 'home_empresa' %}" style="padding: 0.75rem 2rem; border-radius: 8px; text-decoration: none; font-weight: 600; background: #95a5a6; color: white;">
-                Cancelar
-            </a>
-            <button type="submit" style="padding: 0.75rem 2rem; border: none; border-radius: 8px; font-weight: 600; background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); color: white; cursor: pointer;">
-                &#128190; Salvar Altera&ccedil;&otilde;es
-            </button>
-        </div>
-    </form>
-</div>
-
-<script>
-function validarCNPJ() {
-    const cnpjInput = document.querySelector('input[name="cnpj"]');
-    const cnpj = cnpjInput.value;
-    const resultadoDiv = document.getElementById('cnpj-resultado');
-    
-    if (!cnpj) {
-        resultadoDiv.innerHTML = '<span style="color: #e74c3c;">Por favor, insira um CNPJ</span>';
-        return;
-    }
-    
-    resultadoDiv.innerHTML = '<span style="color: #3498db;">🔄 Validando...</span>';
-    
-    fetch(`/validar-cnpj/?cnpj=${cnpj}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.valido) {
-                resultadoDiv.innerHTML = `
-                    <div style="background: #d4edda; color: #155724; padding: 1rem; border-radius: 6px; margin-top: 0.5rem;">
-                        <strong>✓ CNPJ Válido</strong><br>
-                        <strong>Razão Social:</strong> ${data.razao_social}<br>
-                        ${data.nome_fantasia ? `<strong>Nome Fantasia:</strong> ${data.nome_fantasia}<br>` : ''}
-                        <strong>Situação:</strong> ${data.situacao}
-                    </div>
-                `;
-                // Preenche campos automaticamente
-                if (data.razao_social) document.querySelector('input[name="razao_social"]').value = data.razao_social;
-                if (data.nome_fantasia) document.querySelector('input[name="nome_fantasia"]').value = data.nome_fantasia;
-                if (data.municipio) document.querySelector('input[name="cidade"]').value = data.municipio;
-                if (data.uf) document.querySelector('select[name="estado"]').value = data.uf;
-                if (data.cep) document.querySelector('input[name="cep"]').value = data.cep;
-            } else {
-                resultadoDiv.innerHTML = `<span style="color: #e74c3c;">✗ ${data.erro}</span>`;
-            }
-        })
-        .catch(error => {
-            resultadoDiv.innerHTML = '<span style="color: #e74c3c;">✗ Erro ao validar CNPJ</span>';
-        });
-}
-</script>
-
+{% block extra_css %}
 <style>
+    .config-container {
+        max-width: 1200px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+    }
+
+    .header-section {
+        background: linear-gradient(135deg, #1C3E1D 0%, #225082 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 12px;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    .header-section h1 {
+        margin: 0 0 0.5rem 0;
+        font-size: 2rem;
+        font-family: 'Calibri', sans-serif;
+        font-weight: bold;
+    }
+
+    .alert-box {
+        background: #fff3cd;
+        border: 2px solid #ffc107;
+        color: #856404;
+        padding: 1.5rem;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+    }
+
+    .alert-box strong {
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+
+    .form-container {
+        background: white;
+        padding: 2rem;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .form-section {
+        margin-bottom: 2rem;
+        padding-bottom: 2rem;
+        border-bottom: 2px solid #ecf0f1;
+    }
+
+    .form-section:last-of-type {
+        border-bottom: none;
+    }
+
+    .form-section h2 {
+        color: #1C3E1D;
+        border-bottom: 3px solid #1C3E1D;
+        padding-bottom: 0.5rem;
+        margin-bottom: 1.5rem;
+        font-family: 'Calibri', sans-serif;
+        font-weight: bold;
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .form-group {
+        margin-bottom: 0;
+    }
+
+    .form-group label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: #333;
+    }
+
+    .form-group small {
+        display: block;
+        color: #7f8c8d;
+        margin-top: 0.25rem;
+        font-size: 0.875rem;
+    }
+
     .form-input {
         width: 100%;
         padding: 0.75rem;
@@ -269,11 +99,283 @@ function validarCNPJ() {
         font-size: 1rem;
         transition: border-color 0.3s;
     }
-    
+
     .form-input:focus {
         outline: none;
-        border-color: #3498db;
-        box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        border-color: #1C3E1D;
+        box-shadow: 0 0 0 3px rgba(28, 62, 29, 0.1);
+    }
+
+    textarea.form-input {
+        min-height: 100px;
+        resize: vertical;
+    }
+
+    .btn {
+        padding: 0.75rem 2rem;
+        border-radius: 8px;
+        font-weight: 600;
+        text-decoration: none;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: inline-block;
+        border: none;
+        font-size: 1rem;
+    }
+
+    .btn-primary {
+        background: #1C3E1D;
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: #28a745;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+
+    .btn-secondary {
+        background: #95a5a6;
+        color: white;
+    }
+
+    .btn-secondary:hover {
+        background: #7f8c8d;
+    }
+
+    .buttons-row {
+        display: flex;
+        gap: 1rem;
+        justify-content: flex-end;
+        padding-top: 1.5rem;
+    }
+
+    .file-info {
+        display: block;
+        color: #28a745;
+        margin-top: 0.5rem;
+        font-size: 0.9rem;
+    }
+
+    .alert-message {
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        border: 2px solid;
+    }
+
+    .alert-message.success {
+        background: #d4edda;
+        border-color: #28a745;
+        color: #155724;
+    }
+
+    .alert-message.error {
+        background: #f8d7da;
+        border-color: #dc3545;
+        color: #721c24;
+    }
+
+    .alert-message.info {
+        background: #d1ecf1;
+        border-color: #17a2b8;
+        color: #0c5460;
+    }
+
+    .alert-message.warning {
+        background: #fff3cd;
+        border-color: #ffc107;
+        color: #856404;
     }
 </style>
+{% endblock %}
+
+{% block content %}
+<div class="config-container">
+    <div class="header-section">
+        <h1>Configurações da Empresa</h1>
+        <p style="margin: 0; opacity: 0.9;">
+            Mantenha seus dados atualizados para garantir credibilidade e conformidade
+        </p>
+        {% if perfil.verificado %}
+            <div style="margin-top: 1rem; padding: 0.75rem 1rem; background: rgba(255,255,255,0.2); border-radius: 8px; display: inline-block;">
+                <strong>Status:</strong> VERIFICADO
+            </div>
+        {% else %}
+            <div style="margin-top: 1rem; padding: 0.75rem 1rem; background: rgba(255,255,255,0.2); border-radius: 8px; display: inline-block;">
+                <strong>Status:</strong> PENDENTE DE VERIFICAÇÃO
+            </div>
+        {% endif %}
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+        <div class="alert-message {{ message.tags }}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    {% endif %}
+
+    {% if not documentos_completos %}
+    <div class="alert-box">
+        <strong>ATENÇÃO: Documentação Incompleta</strong>
+        <p>Complete a documentação obrigatória para verificação da empresa e evitar perfis falsos.</p>
+    </div>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data" class="form-container">
+        {% csrf_token %}
+
+        <!-- Dados do Usuário -->
+        <div class="form-section">
+            <h2>Dados do Representante Legal</h2>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="{{ form.first_name.id_for_label }}">Nome Completo *</label>
+                    {{ form.first_name }}
+                    {% if form.first_name.errors %}
+                        <small style="color: #dc3545;">{{ form.first_name.errors.0 }}</small>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.email.id_for_label }}">Email Principal *</label>
+                    {{ form.email }}
+                    {% if form.email.errors %}
+                        <small style="color: #dc3545;">{{ form.email.errors.0 }}</small>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Dados Jurídicos -->
+        <div class="form-section">
+            <h2>Dados Jurídicos (Obrigatórios)</h2>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="{{ form.cnpj.id_for_label }}">CNPJ *</label>
+                    {{ form.cnpj }}
+                    <small>Apenas números ou formato XX.XXX.XXX/XXXX-XX</small>
+                    {% if form.cnpj.errors %}
+                        <small style="color: #dc3545;">{{ form.cnpj.errors.0 }}</small>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.razao_social.id_for_label }}">Razão Social *</label>
+                    {{ form.razao_social }}
+                    {% if form.razao_social.errors %}
+                        <small style="color: #dc3545;">{{ form.razao_social.errors.0 }}</small>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.nome_fantasia.id_for_label }}">Nome Fantasia</label>
+                    {{ form.nome_fantasia }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Endereço -->
+        <div class="form-section">
+            <h2>Endereço Comercial</h2>
+            <div class="form-grid">
+                <div class="form-group" style="grid-column: span 2;">
+                    <label for="{{ form.endereco.id_for_label }}">Endereço</label>
+                    {{ form.endereco }}
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.cidade.id_for_label }}">Cidade</label>
+                    {{ form.cidade }}
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.estado.id_for_label }}">Estado</label>
+                    {{ form.estado }}
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.cep.id_for_label }}">CEP</label>
+                    {{ form.cep }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Contato -->
+        <div class="form-section">
+            <h2>Contato</h2>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="{{ form.telefone.id_for_label }}">Telefone</label>
+                    {{ form.telefone }}
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.email_contato.id_for_label }}">Email de Contato</label>
+                    {{ form.email_contato }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Documentação -->
+        <div class="form-section">
+            <h2>Documentação Comprobatória</h2>
+            <p style="color: #856404; margin-bottom: 1rem;">
+                <strong>Importante:</strong> Envie documentos válidos e legíveis em formato PDF. Máximo 5MB por arquivo.
+            </p>
+            
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="{{ form.documento_cnpj.id_for_label }}">Documento CNPJ (Cartão CNPJ) *</label>
+                    {{ form.documento_cnpj }}
+                    {% if doc_cnpj_existe %}
+                        <a href="{{ perfil.documento_cnpj.url }}" target="_blank" class="file-info">
+                            Documento já enviado - Clique para visualizar
+                        </a>
+                    {% endif %}
+                    {% if form.documento_cnpj.errors %}
+                        <small style="color: #dc3545;">{{ form.documento_cnpj.errors.0 }}</small>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.contrato_social.id_for_label }}">Contrato Social / Estatuto *</label>
+                    {{ form.contrato_social }}
+                    {% if contrato_social_existe %}
+                        <a href="{{ perfil.contrato_social.url }}" target="_blank" class="file-info">
+                            Documento já enviado - Clique para visualizar
+                        </a>
+                    {% endif %}
+                    {% if form.contrato_social.errors %}
+                        <small style="color: #dc3545;">{{ form.contrato_social.errors.0 }}</small>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.comprovante_endereco.id_for_label }}">Comprovante de Endereço *</label>
+                    {{ form.comprovante_endereco }}
+                    {% if comprovante_endereco_existe %}
+                        <a href="{{ perfil.comprovante_endereco.url }}" target="_blank" class="file-info">
+                            Documento já enviado - Clique para visualizar
+                        </a>
+                    {% endif %}
+                    {% if form.comprovante_endereco.errors %}
+                        <small style="color: #dc3545;">{{ form.comprovante_endereco.errors.0 }}</small>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Botões -->
+        <div class="buttons-row">
+            <a href="{% url 'home_empresa' %}" class="btn btn-secondary">
+                Cancelar
+            </a>
+            <button type="submit" class="btn btn-primary">
+                Salvar Alterações
+            </button>
+        </div>
+    </form>
+</div>
 {% endblock %}

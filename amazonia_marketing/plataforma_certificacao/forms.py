@@ -78,6 +78,89 @@ class EditarPerfilProdutorForm(forms.ModelForm):
             'endereco': forms.Textarea(attrs={'class': 'form-input', 'rows': 3}),
             'bio': forms.Textarea(attrs={'class': 'form-input', 'rows': 4, 'placeholder': 'Fale sobre o que torna seus produtos diferentes.'}),
         }
+
+class EditarPerfilEmpresaForm(forms.ModelForm):
+    """
+    Formulário para editar perfil da empresa com validação rigorosa.
+    Inclui campos de documentação obrigatória.
+    """
+    # Campos do usuário
+    first_name = forms.CharField(
+        label='Nome do Representante Legal',
+        widget=forms.TextInput(attrs={'class': 'form-input'})
+    )
+    email = forms.EmailField(
+        label='Email Principal',
+        widget=forms.EmailInput(attrs={'class': 'form-input'})
+    )
+    
+    class Meta:
+        model = PerfilEmpresa
+        fields = [
+            'razao_social', 'nome_fantasia', 'cnpj',
+            'endereco', 'cidade', 'estado', 'cep',
+            'telefone', 'email_contato',
+            'documento_cnpj', 'contrato_social', 'comprovante_endereco'
+        ]
+        
+        labels = {
+            'razao_social': 'Razão Social',
+            'nome_fantasia': 'Nome Fantasia',
+            'cnpj': 'CNPJ (apenas números)',
+            'endereco': 'Endereço Completo',
+            'cidade': 'Cidade',
+            'estado': 'Estado (UF)',
+            'cep': 'CEP',
+            'telefone': 'Telefone Principal',
+            'email_contato': 'Email de Contato',
+            'documento_cnpj': 'Cartão CNPJ ou Certidão Simplificada (PDF)',
+            'contrato_social': 'Contrato Social ou Estatuto (PDF)',
+            'comprovante_endereco': 'Comprovante de Endereço (PDF/Imagem)',
+        }
+        
+        widgets = {
+            'razao_social': forms.TextInput(attrs={'class': 'form-input', 'required': True}),
+            'nome_fantasia': forms.TextInput(attrs={'class': 'form-input'}),
+            'cnpj': forms.TextInput(attrs={'class': 'form-input', 'placeholder': '00000000000000', 'maxlength': '14'}),
+            'endereco': forms.Textarea(attrs={'class': 'form-input', 'rows': 2}),
+            'cidade': forms.TextInput(attrs={'class': 'form-input'}),
+            'estado': forms.TextInput(attrs={'class': 'form-input', 'maxlength': '2', 'placeholder': 'SP'}),
+            'cep': forms.TextInput(attrs={'class': 'form-input', 'placeholder': '00000-000'}),
+            'telefone': forms.TextInput(attrs={'class': 'form-input', 'placeholder': '(XX) XXXXX-XXXX'}),
+            'email_contato': forms.EmailInput(attrs={'class': 'form-input'}),
+        }
+    
+    def clean_cnpj(self):
+        """Valida e limpa o CNPJ"""
+        cnpj = self.cleaned_data.get('cnpj', '')
+        # Remove caracteres não numéricos
+        cnpj_limpo = ''.join(filter(str.isdigit, cnpj))
+        
+        if len(cnpj_limpo) != 14:
+            raise ValidationError('CNPJ deve conter exatamente 14 dígitos.')
+        
+        return cnpj_limpo
+    
+    def clean_documento_cnpj(self):
+        """Valida o arquivo do documento CNPJ"""
+        arquivo = self.cleaned_data.get('documento_cnpj')
+        if not arquivo:
+            return arquivo  # Permite não enviar arquivo (mantém o existente)
+        return validar_arquivo_seguro(arquivo)
+    
+    def clean_contrato_social(self):
+        """Valida o arquivo do contrato social"""
+        arquivo = self.cleaned_data.get('contrato_social')
+        if not arquivo:
+            return arquivo  # Permite não enviar arquivo (mantém o existente)
+        return validar_arquivo_seguro(arquivo)
+    
+    def clean_comprovante_endereco(self):
+        """Valida o arquivo do comprovante de endereço"""
+        arquivo = self.cleaned_data.get('comprovante_endereco')
+        if not arquivo:
+            return arquivo  # Permite não enviar arquivo (mantém o existente)
+        return validar_arquivo_seguro(arquivo)
         
 # --- FORMULÁRIO 2: CERTIFICAÇÃO (Entrega da Sprint 4) ---
 class ProdutoComAutodeclaracaoForm(forms.Form): # Formulário híbrido, por isso não herda ModelForm

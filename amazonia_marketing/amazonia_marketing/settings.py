@@ -38,13 +38,21 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'django.contrib.sites',  # Necessário para django-allauth
-    'plataforma_certificacao',
+    'django.contrib.sites',                   # Necessário para django-allauth
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
-    'allauth.socialaccount.providers.google',
+    'allauth.socialaccount.providers.google', # Provedor Google para django-allauth
+    'plataforma_certificacao',
 ]
+
+AUTHETICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend', # Backend padrão do Django
+    'allauth.account.auth_backends.AuthenticationBackend', # Backend do allauth
+]
+
+SITE_ID = 1  # Necessário para django-allauth
+LOGIN_REDIRECT_URL = '/'  # Redireciona para a página inicial após login
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

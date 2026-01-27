@@ -39,6 +39,10 @@ urlpatterns = [
     path('auditoria/aprovadas/', views.lista_certificacoes_aprovadas, name='lista_certificacoes_aprovadas'),
     path('auditoria/reprovadas/', views.lista_certificacoes_reprovadas, name='lista_certificacoes_reprovadas'),
     
+    # Rotas de Empresas (Admin)
+    path('auditoria/empresas/pendentes/', views.lista_empresas_pendentes, name='lista_empresas_pendentes'),
+    path('auditoria/empresas/<int:empresa_id>/', views.detalhe_empresa, name='detalhe_empresa'),
+    
     # API de validação
     path('validar-cnpj/', views.validar_cnpj_api, name='validar_cnpj'),
     

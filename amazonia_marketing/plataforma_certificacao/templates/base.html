@@ -13,7 +13,7 @@
             --texto: #333;
         }
 
-        body { font-family: 'Calibri', 'Segoe UI', sans-serif; margin: 0; background-color: var(--fundo); color: var(--texto); display: flex; flex-direction: column; min-height: 100vh; }
+        body { font-family: 'Calibri', 'Segoe UI', sans-serif; font-weight: bold; margin: 0; background-color: var(--fundo); color: var(--texto); display: flex; flex-direction: column; min-height: 100vh; }
         
         /* CABEÇALHO PADRÃO PARA TODAS AS PÁGINAS HTML (DRY - Fica aqui e aparece em todas as telas) */
         header { background-color: var(--verde-amazonia); color: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
@@ -28,10 +28,6 @@
             transition: opacity 0.3s;
         }
         .logo:hover { opacity: 0.8; }
-        .logo-icon {
-            font-size: 2rem;
-            display: inline-block;
-        }
         .logo-text {
             display: flex;
             flex-direction: column;
@@ -40,12 +36,15 @@
         .logo-main {
             font-size: 1.5rem;
             font-weight: bold;
+            color: white;
         }
         .logo-sub {
             font-size: 0.75rem;
-            opacity: 0.85;
+            opacity: 0.95;
             text-transform: uppercase;
             letter-spacing: 1px;
+            color: #DABB2C;
+            font-weight: bold;
         }
         .nav-links a { color: var(--verde-amazonia); text-decoration: none; margin-left: 15px; font-weight: bold; transition: 0.3s; background-color: var(--amarelo-sol); padding: 6px 12px; border-radius: 2px;}
         .nav-links a:hover { color: var(--verde-amazonia); background-color: var(--fundo); }
@@ -66,7 +65,7 @@
 
     <header>
         <a href="{% url 'home_publica' %}" class="logo">
-            <span class="logo-icon">🌿</span>
+            <img src="/media/logotipo.png" alt="Logo Amazônia Marketing" style="height: 60px; width: auto;">
             <div class="logo-text">
                 <span class="logo-main">Amazônia Marketing</span>
                 <span class="logo-sub">Comércio Justo & Sustentável</span>

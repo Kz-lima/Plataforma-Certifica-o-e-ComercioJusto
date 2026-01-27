@@ -15,27 +15,13 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from plataforma_certificacao import views
 
 urlpatterns = [
-    path('', views.login_usuarios, name='login'),
-    path('produtor/', views.home_produtor, name='home_produtor'),
-    path('empresa/', views.home_empresa, name='home_empresa'),
-    path('auditoria/', views.home_admin, name='home_admin'),
-    path('home/', views.home_padrao, name='home_padrao'),
-    path('logout/', views.logout_view, name='logout'),
-    
-    # URLs para Upload de Autodeclaração
-    path('produtor/enviar-autodeclaracao/', views.enviar_autodeclaracao, name='enviar_autodeclaracao'),
-    path('produtor/certificacoes/', views.ver_certificacoes, name='ver_certificacoes'),
-    path('produtor/certificacao/<int:certificacao_id>/download/', views.baixar_arquivo_certificacao, name='baixar_arquivo_certificacao'),
-    
-    # URLs para Admin (ANTES do Django Admin para não ser capturado)
-    path('admin/certificacoes/', views.admin_visualizar_certificacoes, name='admin_visualizar_certificacoes'),
-    path('admin/certificacao/<int:certificacao_id>/responder/', views.admin_responder_certificacao, name='admin_responder_certificacao'),
+    # Incluir todas as URLs do app plataforma_certificacao
+    path('', include('plataforma_certificacao.urls')),
     
     # Django Admin (deve vir por último)
     path('admin/', admin.site.urls),
