@@ -75,6 +75,9 @@ yarn-error.log
 venv/
 .env
 .env.*
+pyvenv/
+pyvenv.cfg
+pyvenv.cfg/
 
 # IDE
 .vscode/
