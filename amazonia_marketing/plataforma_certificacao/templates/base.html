@@ -72,19 +72,19 @@
             </div>
         </a>
         <nav class="nav-links">
-            {% if request.session.usuario_id %}
-                <span>Olá, {{ request.session.usuario_nome }}</span>
-                {% if request.session.usuario_tipo == 'produtor' %}
+            {% if request.user.is_authenticated %}
+                <span>Olá, {{ request.user.nome }}</span>
+                {% if request.user.tipo == 'produtor' %}
                     <a href="{% url 'home_produtor' %}">Meu Painel</a>
-                {% elif request.session.usuario_tipo == 'admin' %}
+                {% elif request.user.tipo == 'admin' %}
                     <a href="{% url 'home_admin' %}">Painel Administrativo</a>
-                {% elif request.session.usuario_tipo == 'empresa' %}
-                    <a href="{% url 'home_empresa' %}"></a>
+                {% elif request.user.tipo == 'empresa' %}
+                    <a href="{% url 'home_empresa' %}">Meu Painel</a>
                 {% endif %}
                 
-                <form action="{% url 'logout' %}" method="POST" style="margin: 0;">
+                <form action="{% url 'logout' %}" method="POST" style="margin: 0; display: inline;">
                     {% csrf_token %}
-                    <button type="submit" class="btn-sair">Sair</button>
+                    <button type="submit" class="btn-sair" style="background: none; border: none; color: var(--amarelo-sol); cursor: pointer; font-weight: bold; padding: 6px 12px;">Sair</button>
                 </form>
 
             {% else %}

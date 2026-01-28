@@ -164,8 +164,11 @@ ALLOWED_UPLOAD_MIME_TYPES = [
     'image/png',
 ]
 
-# AVISANDO O DJANGO DO CUSTOMUSER
+# ============================================
+# Configuração de Autenticação Customizada
+# ============================================
 
+# Modelo de usuário customizado (LOGIN COM EMAIL)
 AUTH_USER_MODEL = 'plataforma_certificacao.CustomUser'
 
 # ============================================
@@ -177,7 +180,7 @@ SITE_ID = 1
 
 # Backends de autenticação
 AUTHENTICATION_BACKENDS = [
-    # Backend padrão do Django
+    # Backend padrão do Django (para CustomUser)
     'django.contrib.auth.backends.ModelBackend',
     
     # Backend do allauth para social login

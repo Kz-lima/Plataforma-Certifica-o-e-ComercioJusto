@@ -19,7 +19,6 @@ urlpatterns = [
     path('produtor/dashboard/', views.home_produtor, name='home_produtor'),
     path('empresa/dashboard/', views.home_empresa, name='home_empresa'),
     path('auditoria/dashboard', views.home_admin, name='home_admin'),
-    path('home/', views.home_padrao, name='home_padrao'),
     
     # Rotas de funcionalidades do Produtor
     path('cadastro_produto/', views.cadastro_produto, name='cadastro_produto'),
@@ -41,6 +40,8 @@ urlpatterns = [
     
     # Rotas de Empresas (Admin)
     path('auditoria/empresas/pendentes/', views.lista_empresas_pendentes, name='lista_empresas_pendentes'),
+    path('auditoria/empresas/verificadas/', views.lista_empresas_verificadas, name='lista_empresas_verificadas'),
+    path('auditoria/empresas/rejeitadas/', views.lista_empresas_rejeitadas, name='lista_empresas_rejeitadas'),
     path('auditoria/empresas/<int:empresa_id>/', views.detalhe_empresa, name='detalhe_empresa'),
     
     # API de validação

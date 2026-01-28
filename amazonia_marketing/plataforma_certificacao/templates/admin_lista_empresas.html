@@ -75,6 +75,16 @@
         color: #856404;
     }
 
+    .badge-verificado {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .badge-rejeitado {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
     .empresa-details {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -188,9 +198,15 @@
                             <p><strong>Nome Fantasia:</strong> {{ empresa.nome_fantasia }}</p>
                         {% endif %}
                         <p><strong>CNPJ:</strong> {{ empresa.cnpj }}</p>
-                        <p><strong>Representante:</strong> {{ empresa.user.first_name }} ({{ empresa.user.email }})</p>
+                        <p><strong>Representante:</strong> {{ empresa.usuario.nome }} ({{ empresa.usuario.email }})</p>
                     </div>
-                    <span class="badge badge-pendente">PENDENTE</span>
+                    {% if status == 'pendente' %}
+                        <span class="badge badge-pendente">PENDENTE</span>
+                    {% elif status == 'verificado' %}
+                        <span class="badge badge-verificado">VERIFICADO</span>
+                    {% elif status == 'rejeitado' %}
+                        <span class="badge badge-rejeitado">REJEITADO</span>
+                    {% endif %}
                 </div>
 
                 <div class="empresa-details">
@@ -200,27 +216,40 @@
                     </div>
                     <div class="detail-item">
                         <label>Telefone</label>
-                        <strong>{{ empresa.telefone|default:"—" }}</strong>
+                        <strong>{{ empresa.telefone_comercial|default:"—" }}</strong>
                     </div>
                     <div class="detail-item">
-                        <label>Email Contato</label>
-                        <strong>{{ empresa.email_contato|default:"—" }}</strong>
+                        <label>CEP</label>
+                        <strong>{{ empresa.cep|default:"—" }}</strong>
                     </div>
                     <div class="detail-item">
                         <label>Data Cadastro</label>
-                        <strong>{{ empresa.data_cadastro|date:"d/m/Y H:i" }}</strong>
+                        <strong>{{ empresa.data_criacao|date:"d/m/Y H:i" }}</strong>
                     </div>
                 </div>
 
+                {% if status == 'rejeitado' and empresa.observacoes_verificacao %}
+                    <div style="background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 8px; padding: 1rem; margin: 1rem 0; color: #721c24;">
+                        <strong>Motivo da Rejeição:</strong>
+                        <p style="margin: 0.5rem 0 0 0;">{{ empresa.observacoes_verificacao }}</p>
+                    </div>
+                {% endif %}
+
                 <div class="documentos-status">
-                    <div class="doc-item">Cartão CNPJ</div>
-                    <div class="doc-item">Contrato Social</div>
-                    <div class="doc-item">Comprovante de Endereço</div>
+                    <div class="doc-item">Cartão CNPJ {% if empresa.documento_cnpj %}✓{% else %}—{% endif %}</div>
+                    <div class="doc-item">Contrato Social {% if empresa.documento_contrato_social %}✓{% else %}—{% endif %}</div>
+                    <div class="doc-item">Alvará {% if empresa.documento_alvara %}✓{% else %}—{% endif %}</div>
                 </div>
 
                 <div style="text-align: right;">
                     <a href="{% url 'detalhe_empresa' empresa.id %}" class="btn btn-primary">
-                        Analisar Documentos →
+                        {% if status == 'pendente' %}
+                            Analisar Documentos →
+                        {% elif status == 'verificado' %}
+                            Visualizar Detalhes →
+                        {% elif status == 'rejeitado' %}
+                            Revisar Rejeição →
+                        {% endif %}
                     </a>
                 </div>
             </div>
@@ -228,9 +257,44 @@
         </div>
     {% else %}
         <div class="empty-state">
-            <h2>✅ Nenhuma empresa pendente</h2>
-            <p>Todas as empresas foram verificadas ou ainda não enviaram documentos completos.</p>
+            <h2>
+                {% if status == 'pendente' %}
+                    Nenhuma empresa pendente
+                {% elif status == 'verificado' %}
+                    Nenhuma empresa verificada
+                {% elif status == 'rejeitado' %}
+                    Nenhuma empresa rejeitada
+                {% endif %}
+            </h2>
+            <p>
+                {% if status == 'pendente' %}
+                    Todas as empresas foram verificadas ou ainda não enviaram documentos completos.
+                {% elif status == 'verificado' %}
+                    Nenhuma empresa foi aprovada até o momento.
+                {% elif status == 'rejeitado' %}
+                    Nenhuma empresa foi rejeitada até o momento.
+                {% endif %}
+            </p>
         </div>
     {% endif %}
+
+    <!-- Botões de Navegação -->
+    <div style="margin-top: 2rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; padding: 0 1rem;">
+        <a href="{% url 'home_admin' %}" style="padding: 0.75rem 1.5rem; background: #95a5a6; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; transition: background 0.3s; white-space: nowrap;">
+            ← Voltar ao Dashboard
+        </a>
+        
+        <a href="{% url 'lista_empresas_pendentes' %}" style="padding: 0.75rem 1.5rem; background: linear-gradient(135deg, #dabb2c 0%, #c9a620 100%); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; transition: transform 0.2s; white-space: nowrap;">
+            Empresas Pendentes
+        </a>
+        
+        <a href="{% url 'lista_empresas_verificadas' %}" style="padding: 0.75rem 1.5rem; background: linear-gradient(135deg, #1C3E1D 0%, #153c1a 100%); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; transition: transform 0.2s; white-space: nowrap;">
+            Empresas Verificadas
+        </a>
+        
+        <a href="{% url 'lista_empresas_rejeitadas' %}" style="padding: 0.75rem 1.5rem; background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; transition: transform 0.2s; white-space: nowrap;">
+            Empresas Rejeitadas
+        </a>
+    </div>
 </div>
 {% endblock %}

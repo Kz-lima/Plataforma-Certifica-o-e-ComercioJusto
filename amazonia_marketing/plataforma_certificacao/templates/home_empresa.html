@@ -389,8 +389,10 @@
             <p>Bem-vindo, {{ usuario_nome }}! Gerencie seus dados jurídicos e certificações.</p>
         </div>
         <div class="status-container">
-            {% if perfil.verificado %}
+            {% if perfil.status_verificacao == 'verificado' %}
                 <span class="status-badge status-verificado">Verificado</span>
+            {% elif perfil.status_verificacao == 'rejeitado' %}
+                <span class="status-badge" style="background: #f8d7da; color: #721c24; border: 2px solid #dc3545;">Rejeitado</span>
             {% else %}
                 <span class="status-badge status-pendente">Pendente</span>
             {% endif %}
@@ -473,9 +475,20 @@
                 <p>{% if perfil.nome_fantasia %}{{ perfil.nome_fantasia }}{% else %}Não preenchido{% endif %}</p>
             </div>
 
-            <div class="info-box {% if perfil.verificado %}{% else %}empty{% endif %}">
+            <div class="info-box {% if perfil.status_verificacao == 'verificado' %}{% else %}empty{% endif %}">
                 <label>Status de Verificação</label>
-                <p>{% if perfil.verificado %}Verificado pela Receita Federal{% else %}Pendente de verificação{% endif %}</p>
+                <p>
+                    {% if perfil.status_verificacao == 'verificado' %}
+                        <span style="color: #1C3E1D; font-weight: 600;">✓ Verificado pela Auditoria</span>
+                    {% elif perfil.status_verificacao == 'rejeitado' %}
+                        <span style="color: #dc3545; font-weight: 600;">✗ Rejeitado</span>
+                        {% if perfil.observacoes_verificacao %}
+                            <br><small style="color: #666;">Motivo: {{ perfil.observacoes_verificacao }}</small>
+                        {% endif %}
+                    {% else %}
+                        <span style="color: #dabb2c; font-weight: 600;">⏳ Pendente de verificação</span>
+                    {% endif %}
+                </p>
             </div>
         </div>
         <div class="action-buttons">
@@ -493,7 +506,7 @@
         <div class="doc-checklist">
             <!-- Documento CNPJ -->
             <div class="doc-item {% if doc_cnpj_existe %}complete{% endif %}">
-                <h4>Cartão CNPJ</h4>
+                <h4>🪪 Cartão CNPJ</h4>
                 <p>Cópia do Cartão CNPJ ou Certidão Simplificada da Receita Federal</p>
                 {% if doc_cnpj_existe %}
                     <span class="doc-status complete">Enviado</span>
@@ -509,12 +522,12 @@
 
             <!-- Contrato Social -->
             <div class="doc-item {% if contrato_social_existe %}complete{% endif %}">
-                <h4>Contrato Social / Estatuto</h4>
+                <h4>📄 Contrato Social / Estatuto</h4>
                 <p>Cópia autenticada do Contrato Social ou Estatuto da empresa</p>
                 {% if contrato_social_existe %}
                     <span class="doc-status complete">Enviado</span>
                     <p style="margin-top: 8px; font-size: 0.85rem;">
-                        <a href="{{ perfil.contrato_social.url }}" target="_blank" style="color: #28a745; text-decoration: none;">
+                        <a href="{{ perfil.documento_contrato_social.url }}" target="_blank" style="color: #28a745; text-decoration: none;">
                             Visualizar documento
                         </a>
                     </p>
@@ -523,14 +536,14 @@
                 {% endif %}
             </div>
 
-            <!-- Comprovante de Endereço -->
-            <div class="doc-item {% if comprovante_endereco_existe %}complete{% endif %}">
-                <h4>Comprovante de Endereço</h4>
-                <p>Cópia de conta de luz, água ou telefone do último mês</p>
-                {% if comprovante_endereco_existe %}
+            <!-- Alvará de Funcionamento -->
+            <div class="doc-item {% if alvara_existe %}complete{% endif %}">
+                <h4>📋 Alvará de Funcionamento</h4>
+                <p>Documento expedido pela prefeitura comprovando o direito de funcionamento da empresa</p>
+                {% if alvara_existe %}
                     <span class="doc-status complete">Enviado</span>
                     <p style="margin-top: 8px; font-size: 0.85rem;">
-                        <a href="{{ perfil.comprovante_endereco.url }}" target="_blank" style="color: #28a745; text-decoration: none;">
+                        <a href="{{ perfil.documento_alvara.url }}" target="_blank" style="color: #28a745; text-decoration: none;">
                             Visualizar documento
                         </a>
                     </p>

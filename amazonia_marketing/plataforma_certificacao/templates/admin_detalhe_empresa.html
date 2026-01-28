@@ -212,6 +212,32 @@
         {% endfor %}
     {% endif %}
 
+    <!-- Card de Status -->
+    <div class="card" style="background: linear-gradient(135deg, #f5f7fa 0%, #ffffff 100%); border-top: 4px solid #ffc107; margin-bottom: 2rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <p style="margin: 0; color: #666; font-size: 0.9rem;">Status Atual de Verificação</p>
+                <h3 style="margin: 0.5rem 0 0 0; color: #1C3E1D; font-size: 1.5rem;">
+                    {% if empresa.status_verificacao == 'pendente' %}
+                        Pendente
+                    {% elif empresa.status_verificacao == 'verificado' %}
+                        Verificado
+                    {% elif empresa.status_verificacao == 'rejeitado' %}
+                        Rejeitado
+                    {% endif %}
+                </h3>
+            </div>
+            {% if empresa.data_verificacao %}
+                <div style="text-align: right;">
+                    <p style="margin: 0; color: #666; font-size: 0.9rem;">Último Update</p>
+                    <p style="margin: 0.5rem 0 0 0; color: #333; font-weight: bold;">
+                        {{ empresa.data_verificacao|date:"d/m/Y H:i" }}
+                    </p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
     <!-- Dados da Empresa -->
     <div class="card">
         <h2>Dados Cadastrais</h2>
@@ -234,7 +260,7 @@
             
             <div class="info-item">
                 <label>Representante Legal</label>
-                <strong>{{ empresa.user.first_name }}</strong>
+                <strong>{{ empresa.usuario.nome }}</strong>
             </div>
             
             <div class="info-item">
@@ -285,7 +311,6 @@
         
         <div class="documentos-grid">
             <div class="doc-card">
-                <div class="doc-icon">📄</div>
                 <h3>Cartão CNPJ</h3>
                 {% if empresa.documento_cnpj %}
                     <a href="{{ empresa.documento_cnpj.url }}" target="_blank" class="btn btn-view">
@@ -297,10 +322,9 @@
             </div>
             
             <div class="doc-card">
-                <div class="doc-icon">📜</div>
                 <h3>Contrato Social / Estatuto</h3>
-                {% if empresa.contrato_social %}
-                    <a href="{{ empresa.contrato_social.url }}" target="_blank" class="btn btn-view">
+                {% if empresa.documento_contrato_social %}
+                    <a href="{{ empresa.documento_contrato_social.url }}" target="_blank" class="btn btn-view">
                         Visualizar Documento →
                     </a>
                 {% else %}
@@ -309,10 +333,9 @@
             </div>
             
             <div class="doc-card">
-                <div class="doc-icon">🏠</div>
-                <h3>Comprovante de Endereço</h3>
-                {% if empresa.comprovante_endereco %}
-                    <a href="{{ empresa.comprovante_endereco.url }}" target="_blank" class="btn btn-view">
+                <h3>Alvará de Funcionamento</h3>
+                {% if empresa.documento_alvara %}
+                    <a href="{{ empresa.documento_alvara.url }}" target="_blank" class="btn btn-view">
                         Visualizar Documento →
                     </a>
                 {% else %}
@@ -331,11 +354,11 @@
             
             <div class="actions-form">
                 <button type="submit" name="acao" value="aprovar" class="btn btn-aprovar">
-                    ✓ Aprovar e Verificar Empresa
+                    Aprovar e Verificar Empresa
                 </button>
                 
                 <button type="button" class="btn btn-reprovar" onclick="mostrarMotivoReprova()">
-                    ✗ Reprovar Documentação
+                    Reprovar Documentação
                 </button>
                 
                 <a href="{% url 'lista_empresas_pendentes' %}" class="btn btn-voltar">
@@ -351,11 +374,15 @@
                         id="motivo" 
                         class="form-input" 
                         rows="4"
-                        placeholder="Descreva o motivo da reprovação (ex: Documentos ilegíveis, CNPJ não corresponde, endereço inválido, etc.)"
+                        placeholder="Descreva o motivo da reprovação (ex: Documentos ilegíveis, CNPJ não corresponde, endereço inválido, dados incompletos, etc.)"
+                        required
                     ></textarea>
                 </div>
                 <button type="submit" name="acao" value="reprovar" class="btn btn-reprovar" style="width: 100%;">
                     Confirmar Reprovação
+                </button>
+                <button type="button" class="btn btn-voltar" style="width: 100%; margin-top: 10px;" onclick="ocultarMotivoReprova()">
+                    Cancelar
                 </button>
             </div>
         </form>
@@ -365,6 +392,12 @@
 <script>
 function mostrarMotivoReprova() {
     document.getElementById('motivoBox').classList.add('show');
+    document.getElementById('motivo').focus();
+}
+
+function ocultarMotivoReprova() {
+    document.getElementById('motivoBox').classList.remove('show');
+    document.getElementById('motivo').value = '';
 }
 </script>
 {% endblock %}
