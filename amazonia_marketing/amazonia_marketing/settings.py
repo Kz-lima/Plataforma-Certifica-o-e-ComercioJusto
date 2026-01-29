@@ -196,3 +196,8 @@ SOCIALACCOUNT_QUERY_EMAIL = True
 # Pular tela de sign in e ir direto para o login com a conta social
 SOCIALACCOUNT_LOGIN_ON_GET = True
 
+
+
+# AVISANDO O DJANGO DO CUSTOMUSER
+
+AUTH_USER_MODEL = 'plataforma_certificacao.CustomUser'

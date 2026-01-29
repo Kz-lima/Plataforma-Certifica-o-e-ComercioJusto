@@ -4,7 +4,6 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 
-
 urlpatterns = [   
     path('', views.home_publica, name='home_publica'), # Tela inicial pública
     

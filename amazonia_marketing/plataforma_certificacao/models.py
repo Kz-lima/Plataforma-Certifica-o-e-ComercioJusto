@@ -202,8 +202,8 @@ class Produtos(models.Model):
     ]
     
     id_produto = models.AutoField(primary_key=True)
+    
     nome = models.CharField(max_length=100)
-    categoria = models.CharField(max_length=100)
     descricao = models.TextField(blank=True, null=True)
     preco = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     status_estoque = models.CharField(max_length=10, choices=STATUS_ESTOQUE_CHOICES, default='disponivel', blank=True, null=True)

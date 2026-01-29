@@ -1,9 +1,8 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from django.conf import settings
-from django.contrib.auth import get_user_model
-from .models import Produtos, UsuarioBase, Produtor, Empresa
-from django.contrib.auth.models import User
+from .models import CustomUser, PerfilProduto, PerfilEmpresa, Produtos, Certificacoes
+from django.contrib.auth.forms import UserCreationForm
 
 # --- Princípio DRY - Don't Repeat Yourself ---
 def validar_arquivo_seguro(arquivo):
@@ -36,7 +35,6 @@ def validar_arquivo_seguro(arquivo):
     
     return arquivo
 
-
 # --- FORMULÁRIO 1: CADASTRO DE PRODUTO ---
 class ProdutoForm(forms.ModelForm):
     class Meta:
@@ -55,7 +53,29 @@ class ProdutoForm(forms.ModelForm):
         imagem = self.cleaned_data.get('imagem')
         return validar_arquivo_seguro(imagem)
 
-
+class EditarPerfilProdutorForm(forms.ModelForm):
+    # Campos que queremos editar
+    first_name = forms.CharField(label='Nome da Pessoa Física', widget=forms.TextInput(attrs={'class': 'form-input'}))
+    email = forms.EmailField(label='Email', widget=forms.EmailInput(attrs={'class': 'form-input'}))
+    
+    # Campos do perfil
+    class Meta:
+        model = PerfilProduto
+        fields = ['nome', 'telefon', 'endereco', 'bio']
+        
+        labels = {
+            'nome': 'Nome da Fazenda / Negócio',
+            'endereco': 'Endereço da Propriedade',
+            'telefon': 'Telefone'
+        }
+        
+        widgets = {
+            'nome': forms.TextInput(attrs={'class': 'form-input'}),
+            'telefon': forms.TextInput(attrs={'class': 'form-input', 'placeholder': '(XX) XXXXX-XXXX'}),
+            'endereco': forms.Textarea(attrs={'class': 'form-input', 'rows': 3}),
+            'bio': forms.Textarea(attrs={'class': 'form-input', 'rows': 4, 'placeholder': 'Fale sobre o que torna seus produtos diferentes.'}),
+        }
+        
 # --- FORMULÁRIO 2: CERTIFICAÇÃO (Entrega da Sprint 4) ---
 class ProdutoComAutodeclaracaoForm(forms.Form): # Formulário híbrido, por isso não herda ModelForm
     # Campo 1: Select (Menu) para escolher qual produto certificar
@@ -500,3 +520,79 @@ class CertificacaoMultiplaForm(forms.Form):
             raise ValidationError('Por favor, preencha o texto OU envie pelo menos o primeiro documento.')
         
         return cleaned_data
+    
+# FORMULÁRIO DE CADASTRO DO USUÁRIO
+class CadastroUsuarioForm(UserCreationForm):
+    # Campos extras que não existem no formulário padrão
+    nome_completo = forms.CharField(max_length=50, help_text='Nome da Fazenda ou Razão Social')
+    email = forms.EmailField(required=True)
+    
+    # O seletor de topo 
+    TIPO_CHOICES = (
+        ('produtor', 'Sou Produtor'),
+        ('empresa', 'Sou Empresa')
+    )
+    tipo_usuario = forms.ChoiceField(choices=TIPO_CHOICES, widget=forms.RadioSelect)
+    
+    # Campos específicos (inicialmente opcionais na validação visual, mas tratados no backend)
+    cpf = forms.CharField(max_length=11, label="CPF", required=False)
+    cnpj = forms.CharField(max_length=14, label="CNPJ", required=False)
+    endereco = forms.CharField(widget=forms.Textarea(attrs={'rows': 2}), required=False)
+    
+    class Meta:
+        model = CustomUser
+        # Definimos quais campos do Model aparecem no HTML e na ordem certa
+        fields = ('username', 'email', 'nome_completo', 'tipo_usuario', 'cpf', 'cnpj', 'endereco')
+        
+    # Validação Inteligente para saber qual foi escolhido
+    def clean(self):
+        cleaned_data = super().clean()
+        tipo = cleaned_data.get('tipo_usuario')
+        cpf = cleaned_data.get('cpf')
+        cnpj = cleaned_data.get('cnpj')
+        
+        # Regra 1: Se for Produtor, TEM que ter CPF
+        if tipo == 'produtor':
+            if not cpf:
+                self.add_error('cpf', 'O CPF é obrigatório para produtores.')
+            # Limpa o CNPJ para não salvar lixo
+            cleaned_data['cnpj'] = None
+            
+        # Regra 2: Se for Empresa, TEM que ter CNPJ
+        elif tipo == 'empresa':
+            if not cnpj:
+                self.add_error('cnpj', 'O CNPJ é obrigatório para empresas.')
+            # Limpa o CPF para não salvar lixo
+            cleaned_data['cpf'] = None
+
+        return cleaned_data
+    
+    def save(self, commit=True):
+        # 1. Salva o Usuário Pai (CustomUser) primeiro
+        user = super().save(commit=False)
+        user.email = self.cleaned_data['email']
+        user.first_name = self.cleaned_data['nome_completo'] # Usamos first_name para guardar o nome exibido
+        user.tipo_usuario = self.cleaned_data['tipo_usuario']
+        
+        if commit:
+            user.save()
+            # Salva no perfil correto baseado na escolha
+            cpf_limpo = self.cleaned_data['cpf']
+            if user.tipo_usuario == 'produtor':
+                PerfilProduto.objects.create(
+                    user=user,
+                    nome=self.cleaned_data['nome_completo'],
+                    cpf=cpf_limpo,
+                    endereco=self.cleaned_data['endereco']
+                )
+            elif user.tipo_usuario == 'empresa':
+                cnpj_limpo = self.cleaned_data['cnpj']
+
+                PerfilEmpresa.objects.create(
+                    user=user,
+                    razao_social=self.cleaned_data['nome_completo'],
+                    cnpj=cnpj_limpo
+                )
+        return user
+    
+  
